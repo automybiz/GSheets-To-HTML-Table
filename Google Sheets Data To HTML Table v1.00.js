@@ -1,496 +1,3 @@
-<script>
-    // ============================================
-    // CONFIGURATION VARIABLES
-    // ============================================
-    const CONFIG = {
-        SPREADSHEET_ID: '1B1q-dS1gqTvM1mH1c7PALWT0n1LqbhYHk6J0wbLYh8o',
-        API_KEY: 'AIzaSyCkKOY3psLW59GsNN7PqVMsn7ZEejKFQPE',
-        RANGE: 'Sheet1',
-        STARTING_ROW: 1,
-        HEADER_ROW_NUMBER: 0, // Set to 0 to hide headers, otherwise set to the spreadsheet row number to keep headers visible (e.g., 1 for the first row)
-        USE_CORS_PROXY: false,
-        FETCH_DATA_ON_PAGE_LOAD: true,
-        SEARCH_DELAY_MS: 333,
-        AUTO_REFETCH_DATA_ON_ERROR_DELAY: 1500,
-        
-        // Image Configuration
-        IMAGE_MAX_WIDTH: 50, // Maximum width in pixels (set to null for no limit)
-        IMAGE_MAX_HEIGHT: null, // Maximum height in pixels (set to null for no limit)
-        IMAGE_MAINTAIN_ASPECT_RATIO: true, // true = maintain proportions, false = stretch to fit
-        
-        // Video Configuration
-        YOUTUBE_EMBED_WIDTH: 560,
-        YOUTUBE_EMBED_HEIGHT: 315,
-        
-        // Column Configuration
-        COLUMN_WIDTHS: ['','','',''], // Width in pixels for each column (empty string = auto width)
-        HEADER_ROW_COLUMNS_ALIGN: ['center','center','center','center'],
-        QUESTION_COLUMNS_ALIGN: ['left','left','center','center'],
-        QUESTION_COLUMNS: ['SHOW', 'B'],
-        ANSWER_COLUMN: 'C',
-        URL_COLUMNS: ['D'],
-        SHOW_HIDE_ICON: '›',
-        
-        // Search Configuration
-        SEARCH_SCOPE: 'single', // Options: 'single' (search only this table) or 'all' (search all tables on page)
-        SHOW_SEARCH_BOX: true, // Set to false to hide search box for this instance
-        SEARCHES_COMMON: ['All', 'AI', 'Automation', 'Billing', 'Calendar', 'CRM', 'Demo', 'Email', 'Facebook', 'Feature', 'Form', 'Funnel', 'Get Started', 'Instagram', 'Integration', 'JavaScript', 'Launchpad', 'Payment', 'Pricing', 'QR Code', 'Quickbooks', 'SMS', 'Support', 'Sync', 'Tags', 'Team', 'Webchat', 'Website', 'WhatsApp', 'Workflow'],
-        SEARCH_PLACEHOLDER: 'Search...', // Placeholder text for the search input
-        SEARCH_PLACEHOLDER_ANIMATION_SPEED: 222, // Delay in milliseconds between each letter when typing the placeholder
-        SEARCH_PLACEHOLDER_ANIMATION_LOOP_DELAY: 2222, // Delay in milliseconds before the placeholder animation loops
-        
-        // Display Configuration
-        AUTO_NUMBER_ROWS: 1, // Starting number for auto-numbering rows (set to null to disable)
-        AUTO_NUMBER_COLUMN_WIDTH: 50, // Width in pixels for auto-number column (default: 50)
-        QUESTION_PREFIX: '<u><b>Question:</b></u>&nbsp;', // HTML/text prefix for first question column (empty string to disable)
-        ANSWER_PREFIX: '<u><b>Answer:</b></u><br>', // HTML/text to show before answer content (empty string to disable)
-        
-        // Animation Configuration
-        ANSWER_TRANSITION_SPEED: 555, // Transition speed in milliseconds (e.g., 200, 400, 600, 800)
-        ANSWER_TRANSITION_EFFECT: 'snap', // Options: 'smooth', 'ease-in', 'ease-out', 'bounce', 'snap'
-        ANSWER_TEXT_EFFECT: 'rotate', // Options: 'none', 'slide', 'bounce', 'zoom', 'fade', 'blur', 'rotate', 'elastic'
-        ANSWER_TEXT_EFFECT_DIRECTION: 'up', // Options: 'left', 'right', 'up', 'down' (only for slide/bounce)
-        ANSWER_TEXT_EFFECT_FADE: 333, // Fade-in duration in milliseconds (0 to disable)
-        
-        // Filter Conditions
-        FILTER_CONDITIONS: [
-            { column: 'A', condition: 'equals', value: 'PUBLIC' },
-        ] 
-    };
-    </script>
-    <style>
-    /* ============================================ 
-       ACCORDION CSS VARIABLES
-       ============================================ */
-    :root {
-        /* Question Styling */
-        --question-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        --question-font-size: 16px;
-        --question-font-color: #FFF;
-        --question-link-color: #0FF;
-        --question-bg-color: #022;
-        --question-border-color: #099;
-        
-        /* Question Hover Styling */
-        --question-hover-font-color: #FFF;
-        --question-hover-bg-color: #033;
-        
-        /* Answer Styling */
-        --answer-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        --answer-font-size: 13px;
-        --answer-font-color: #FFF;
-        --answer-bg-color: #101;
-        --answer-border-color: #099;
-        
-        /* Layout */
-        --accordion-spacing: 0px;
-        --border-radius: 8px;
-        --question-padding-horizontal: 11px;
-        --question-padding-vertical: 6px;
-        --answer-padding-horizontal: 22px;
-        --answer-padding-vertical: 11px;
-        --auto-number-column-width: 30px;
-        
-        /* Alternating Row Colors */
-        --row-even-bg-color: #011;
-        --row-odd-bg-color: #022;
-        
-        /* Search Input Styling */
-        --search-font-color: #FFF;
-        --search-bg-color: #011;
-        --search-border-color: #099;
-        --search-border-radius: 8px;
-        --search-font-size: 16px;
-        --search-padding-vertical: 6px;
-        --search-padding-horizontal: 11px;
-        --search-width: 333px;
-        --search-margin-bottom: 6px;
-        
-        --search-highlight-bg-color: transparent;
-        --search-highlight-text-color: #0FF;
-        --common-search-spacing: 5px;
-        
-        --text-no-background-size: 20px;
-        --text-no-background-color: #FFF;
-    }
-    
-    /* ============================================
-       ACCORDION SEARCH INPUT
-       ============================================ */
-    .accordion-search-input {
-        color: var(--search-font-color) !important;
-        background-color: var(--search-bg-color) !important;
-        border: 1px solid var(--search-border-color) !important;
-        border-radius: var(--search-border-radius) !important;
-        font-size: var(--search-font-size) !important;
-        padding: var(--search-padding-vertical) var(--search-padding-horizontal) !important;
-        width: var(--search-width) !important;
-        margin-bottom: var(--search-margin-bottom) !important;
-        outline: none;
-    }
-    
-    .accordion-search-input::placeholder {
-        color: rgba(255, 255, 255, 0.5);
-    }
-    
-    .accordion-common-searches {
-        display: inline-flex;
-        gap: var(--common-search-spacing);
-        flex-wrap: wrap;
-        align-items: center;
-        margin-bottom: var(--search-margin-bottom);
-    }
-    
-    .accordion-common-search-item {
-        color: var(--search-font-color);
-        background-color: var(--search-bg-color);
-        border: 1px solid var(--search-border-color);
-        border-radius: var(--search-border-radius);
-        font-size: calc(var(--search-font-size) - 2px);
-        padding: 4px 8px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        user-select: none;
-    }
-    
-    .accordion-common-search-item:hover {
-        background-color: var(--question-hover-bg-color);
-        transform: translateY(-1px);
-    }
-    
-    .accordion-common-search-item:active {
-        transform: translateY(0);
-    }
-    
-    .accordion-search-highlight {
-        background-color: var(--search-highlight-bg-color);
-        color: var(--search-highlight-text-color);
-        padding: 0px 0px;
-        border-radius: 2px;
-    }
-    
-    .text-no-background {
-        color: var(--text-no-background-color);
-        font-size: var(--text-no-background-size);
-    }
-    
-    /* ============================================
-       ACCORDION TABLE STYLES
-       ============================================ */
-    .accordion-container {
-        max-width: 100%;
-    }
-    
-    .accordion-item {
-        margin-bottom: var(--accordion-spacing);
-    }
-    
-    .accordion-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-family: var(--question-font-family);
-        font-size: var(--question-font-size);
-    }
-    
-    .accordion-question-row {
-        background-color: var(--question-bg-color);
-        color: var(--question-font-color);
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-    }
-
-    .accordion-question-row a {
-        color: var(--question-link-color);
-        text-decoration: underline;
-        display: block; /* make the whole cell clickable */
-    }
-
-    .accordion-question-row a:visited {
-        color: var(--question-link-color);
-    }
-    
-    .accordion-item:nth-child(even) .accordion-question-row {
-        background-color: var(--row-even-bg-color);
-    }
-    
-        .accordion-item:nth-child(odd) .accordion-question-row {
-            background-color: var(--row-odd-bg-color);
-        }
-    
-        /* Explicit row coloring for dynamic updates */
-        .accordion-question-row.even-row {
-            background-color: var(--row-even-bg-color) !important;
-        }
-    
-        .accordion-question-row.odd-row {
-            background-color: var(--row-odd-bg-color) !important;
-        }
-    
-    .accordion-question-row.no-answer {
-        cursor: default;
-    }
-    
-    .accordion-question-row:not(.no-answer):hover {
-        background-color: var(--question-hover-bg-color);
-        color: var(--question-hover-font-color);
-    }
-    
-    .accordion-question-row td {
-        padding: var(--question-padding-vertical) var(--question-padding-horizontal);
-        border: 1px solid var(--question-border-color);
-    }
-    
-    /* Remove bottom border from question row when answer is collapsed */
-    .accordion-item:not(.active):not(.last-visible-item) .accordion-question-row td {
-        border-bottom-width: 0px;
-    }
-    
-    /* Restore bottom border when answer is expanded */
-    .accordion-item.active .accordion-question-row td {
-        border-bottom-width: 1px;
-    }
-    
-    /* Auto-number column styling */
-    .accordion-auto-number-cell {
-        width: var(--auto-number-column-width);
-        max-width: var(--auto-number-column-width);
-        white-space: nowrap;
-        overflow: hidden;
-    }
-    
-    /* Remove padding for image cells */
-    .accordion-question-row td.accordion-image-cell {
-        padding: 0;
-        line-height: 0;
-        vertical-align: middle;
-        text-align: center;
-    }
-    
-    .accordion-image-content {
-        display: block;
-        margin: 0 auto;
-    }
-    
-    /* First item top-left corner */
-    .accordion-item:first-child .accordion-question-row td:first-child {
-        border-top-left-radius: var(--border-radius);
-    }
-    
-    /* First item top-right corner */
-    .accordion-item:first-child .accordion-question-row td:last-child {
-        border-top-right-radius: var(--border-radius);
-    }
-    
-    /* Last item bottom corners - for rows WITHOUT answers */
-    .accordion-item:last-child .accordion-question-row.no-answer td:first-child {
-        border-bottom-left-radius: var(--border-radius);
-    }
-    
-    .accordion-item:last-child .accordion-question-row.no-answer td:last-child {
-        border-bottom-right-radius: var(--border-radius);
-    }
-    
-    /* Last item bottom corners - for answer cells */
-    .accordion-item:last-child .accordion-answer-cell {
-        border-bottom-left-radius: var(--border-radius);
-        border-bottom-right-radius: var(--border-radius);
-    }
-    
-    .accordion-answer-row {
-        background-color: var(--answer-bg-color);
-        color: var(--answer-font-color);
-    }
-    
-    .accordion-answer-cell {
-        padding: 0;
-        border: 1px solid var(--answer-border-color);
-        border-top: none;
-    }
-    
-    /* Hide answer cell border when collapsed */
-    .accordion-item:not(.active) .accordion-answer-cell {
-        border: none;
-    }
-    
-    .accordion-answer-wrapper {
-        max-height: 0;
-        overflow: hidden;
-    }
-    
-    .accordion-item.active .accordion-answer-wrapper {
-        max-height: 5000px;
-    }
-    
-    .accordion-answer-content {
-        padding: var(--answer-padding-vertical) var(--answer-padding-horizontal);
-        line-height: 1.6;
-        font-family: var(--answer-font-family);
-        font-size: var(--answer-font-size);
-        opacity: 0;
-        transform: translateY(0);
-        transition: opacity 0.1s, transform 0.1s;
-    }
-    
-    .accordion-item.active .accordion-answer-content {
-        opacity: 1;
-    }
-    
-    .accordion-answer-content img {
-        max-width: 100%;
-        height: auto;
-        display: block;
-        margin: 10px 0;
-    }
-    
-    .accordion-answer-content iframe {
-        margin: 10px 0;
-        border: none;
-    }
-    
-    .accordion-answer-content a {
-        color: #0099ff;
-        text-decoration: underline;
-    }
-    
-    .accordion-answer-content a:hover {
-        color: #00ccff;
-    }
-    
-    /* Text effect animations */
-    @keyframes slideFromLeft {
-        from { transform: translateX(-30px); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    
-    @keyframes slideFromRight {
-        from { transform: translateX(30px); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    
-    @keyframes slideFromUp {
-        from { transform: translateY(30px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-    }
-    
-    @keyframes slideFromDown {
-        from { transform: translateY(-30px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-    }
-    
-    @keyframes bounceFromLeft {
-        0% { transform: translateX(-50px); opacity: 0; }
-        60% { transform: translateX(10px); opacity: 1; }
-        80% { transform: translateX(-5px); }
-        100% { transform: translateX(0); }
-    }
-    
-    @keyframes bounceFromRight {
-        0% { transform: translateX(50px); opacity: 0; }
-        60% { transform: translateX(-10px); opacity: 1; }
-        80% { transform: translateX(5px); }
-        100% { transform: translateX(0); }
-    }
-    
-    @keyframes bounceFromUp {
-        0% { transform: translateY(50px); opacity: 0; }
-        60% { transform: translateY(-10px); opacity: 1; }
-        80% { transform: translateY(5px); }
-        100% { transform: translateY(0); }
-    }
-    
-    @keyframes bounceFromDown {
-        0% { transform: translateY(-50px); opacity: 0; }
-        60% { transform: translateY(10px); opacity: 1; }
-        80% { transform: translateY(-5px); }
-        100% { transform: translateY(0); }
-    }
-    
-    @keyframes zoomIn {
-        from { transform: scale(0.3); opacity: 0; }
-        to { transform: scale(1); opacity: 1; }
-    }
-    
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    
-    @keyframes blurIn {
-        from { filter: blur(10px); opacity: 0; }
-        to { filter: blur(0); opacity: 1; }
-    }
-    
-    @keyframes rotateIn {
-        from { transform: rotate(-180deg) scale(0.5); opacity: 0; }
-        to { transform: rotate(0) scale(1); opacity: 1; }
-    }
-    
-    @keyframes elasticIn {
-        0% { transform: scale(0); opacity: 0; }
-        50% { transform: scale(1.2); opacity: 0.8; }
-        70% { transform: scale(0.9); opacity: 1; }
-        85% { transform: scale(1.05); }
-        100% { transform: scale(1); opacity: 1; }
-    }
-    
-    .accordion-item.hidden {
-        display: none;
-    }
-    
-    .loading-message {
-        text-align: center;
-        padding: 40px 20px;
-        color: #6c757d;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }
-    
-    .spinner {
-        border: 3px solid #f3f3f3;
-        border-top: 3px solid #667eea;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 15px;
-    }
-    
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    
-    .error-message {
-        background: #f8d7da;
-        color: #721c24;
-        padding: 20px;
-        border-radius: var(--border-radius);
-        border: 1px solid #f5c6cb;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }
-    
-    .error-message.auto-retry {
-        background: #fff3cd;
-        color: #856404;
-        border-color: #ffeaa7;
-        cursor: pointer;
-    }
-    
-    .error-message.auto-retry:hover {
-        background: #ffe8a1;
-    }
-    
-    .no-results-message {
-        text-align: center;
-        padding: 20px;
-        color: var(--answer-font-color);
-        font-family: var(--answer-font-family);
-        font-size: var(--answer-font-size);
-    }
-    </style>
-    
-    <div class="accordion-wrapper"></div>
-    
-    <script>
     (function() {
     
     // Generate unique instance ID
@@ -1273,28 +780,34 @@
                     html += `<td align="center" class="accordion-auto-number-cell" style="width: ${autoNumberWidth}px; max-width: ${autoNumberWidth}px;">${rowNumber}</td>`;
                 }
                 
-                questionColumnIndices.forEach((colIndex, i) => {
-                    const cellValue = row[colIndex] || '';
-                    // Add question prefix to first question column only (but not for header rows)
-                    const questionPrefix = (i === 0 && CONFIG.QUESTION_PREFIX && !isHeaderRow && !forceDisplay) ? CONFIG.QUESTION_PREFIX : '';
+				questionColumnIndices.forEach((colIndex, i) => {
+					const cellValue = row[colIndex] || '';
+					// Add question prefix to first question column only (but not for header rows)
+					const questionPrefix = (i === 0 && CONFIG.QUESTION_PREFIX && !isHeaderRow && !forceDisplay) ? CONFIG.QUESTION_PREFIX : '';
 
-                    // Optional URL for this question column (from CONFIG.URL_COLUMNS)
-                    let linkedValue = '';
-                    const urlColIndex = urlColumnIndices[i];
-                    const rawUrl = (typeof urlColIndex === 'number') ? (row[urlColIndex] || '').toString().trim() : '';
-                    const hasUrl = rawUrl && /^https?:\/\//i.test(rawUrl);
+					// Optional URL for this question column (from CONFIG.URL_COLUMNS)
+					let linkedValue = '';
+					const urlColIndex = urlColumnIndices[i];
+					const rawUrl = (typeof urlColIndex === 'number') ? (row[urlColIndex] || '').toString().trim() : '';
+					const hasUrl = rawUrl && /^https?:\/\//i.test(rawUrl);
 
-                    // Preserve whitespace and line breaks for the question text
-                    let questionHtml = preserveWhitespace(cellValue);
-                    questionHtml = convertNewlinesToBR(questionHtml);
-
-                    if (hasUrl) {
-                        linkedValue = `<a href="${rawUrl}" target="_blank">${questionPrefix}${questionHtml}</a>`;
-                    } else {
-                        // Fallback to existing URL/image detection within the question cell itself
-                        const processedValue = convertURLsToLinks(cellValue, true);
-                        linkedValue = questionPrefix + processedValue;
-                    }
+					// Check if cell contains an image URL first
+					const directImageUrl = isDirectImageURL(cellValue);
+					
+					if (directImageUrl && hasUrl) {
+						// Cell has image URL AND a link URL - wrap image in link
+						const imageTag = generateImageTag(directImageUrl, true);
+						linkedValue = `<a href="${rawUrl}" target="_blank">${imageTag}</a>`;
+					} else if (hasUrl) {
+						// Cell has link URL but no image - wrap text in link
+						let questionHtml = preserveWhitespace(cellValue);
+						questionHtml = convertNewlinesToBR(questionHtml);
+						linkedValue = `<a href="${rawUrl}" target="_blank">${questionPrefix}${questionHtml}</a>`;
+					} else {
+						// No link URL - use existing URL/image detection
+						const processedValue = convertURLsToLinks(cellValue, true);
+						linkedValue = questionPrefix + processedValue;
+					}
 
                     const alignment = alignmentToUse[i] || 'left';
                     
@@ -1310,19 +823,36 @@
                 });
                 html += '</tr>';
                 
-                if (answer) {
-                    const answerPrefix = CONFIG.ANSWER_PREFIX || '';
-                    const processedAnswer = convertURLsToLinks(answer, false);
-                    html += `
-                        <tr class="accordion-answer-row">
-                            <td colspan="${numColumns}" class="accordion-answer-cell">
-                                <div class="accordion-answer-wrapper">
-                                    <div class="accordion-answer-content">${answerPrefix}${processedAnswer}</div>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                }
+				if (answer) {
+					const answerPrefix = CONFIG.ANSWER_PREFIX || '';
+					const processedAnswer = convertURLsToLinks(answer, false);
+					
+					// Get enlarged thumbnail if enabled
+					let enlargedThumbnail = '';
+					if (CONFIG.SHOW_ENLARGED_THUMBNAIL_IN_ANSWER_ROW) {
+						// Find the leftmost column with an image
+						for (let i = 0; i < questionColumnIndices.length; i++) {
+							const colIndex = questionColumnIndices[i];
+							const cellValue = row[colIndex] || '';
+							const imageUrl = isDirectImageURL(cellValue);
+							
+							if (imageUrl) {
+								enlargedThumbnail = `<div class="accordion-answer-thumbnail"><img src="${imageUrl}" alt="Enlarged thumbnail" loading="lazy"></div>`;
+								break; // Use only the first (leftmost) image found
+							}
+						}
+					}
+					
+					html += `
+						<tr class="accordion-answer-row">
+							<td colspan="${numColumns}" class="accordion-answer-cell">
+								<div class="accordion-answer-wrapper">
+									<div class="accordion-answer-content">${enlargedThumbnail}${answerPrefix}${processedAnswer}</div>
+								</div>
+							</td>
+						</tr>
+					`;
+				}
                 
                 html += '</tbody>';
                 isFirstDataRow = false;
@@ -1459,4 +989,3 @@
     }
     
     })();
-    </script>

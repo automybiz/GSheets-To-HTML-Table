@@ -1,0 +1,449 @@
+    /* ============================================ 
+       ACCORDION CSS VARIABLES
+       ============================================ */
+    :root {
+        /* Question Styling */
+        --question-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --question-font-size: 16px;
+        --question-font-color: #FFF;
+        --question-link-color: #0FF;
+        --question-bg-color: #022;
+        --question-border-color: #099;
+        
+        /* Question Hover Styling */
+        --question-hover-font-color: #FFF;
+        --question-hover-bg-color: #033;
+        
+        /* Answer Styling */
+        --answer-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --answer-font-size: 13px;
+        --answer-font-color: #FFF;
+        --answer-bg-color: #101;
+        --answer-border-color: #099;
+        
+        /* Layout */
+        --accordion-spacing: 0px;
+        --border-radius: 8px;
+        --question-padding-horizontal: 11px;
+        --question-padding-vertical: 6px;
+        --answer-padding-left: 22px;
+        --answer-padding-right: 22px;
+        --answer-padding-top: 11px;
+        --answer-padding-bottom: 11px;
+        --auto-number-column-width: 30px;
+        
+        /* Alternating Row Colors */
+        --row-even-bg-color: #011;
+        --row-odd-bg-color: #022;
+        
+        /* Search Input Styling */
+        --search-font-color: #FFF;
+        --search-bg-color: #011;
+        --search-border-color: #099;
+        --search-border-radius: 8px;
+        --search-font-size: 16px;
+        --search-padding-vertical: 6px;
+        --search-padding-horizontal: 11px;
+        --search-width: 333px;
+        --search-margin-bottom: 6px;
+        
+        --search-highlight-bg-color: transparent;
+        --search-highlight-text-color: #0FF;
+        --common-search-spacing: 5px;
+        
+        --text-no-background-size: 20px;
+        --text-no-background-color: #FFF;
+    }
+    
+    /* ============================================
+       ACCORDION SEARCH INPUT
+       ============================================ */
+    .accordion-search-input {
+        color: var(--search-font-color) !important;
+        background-color: var(--search-bg-color) !important;
+        border: 1px solid var(--search-border-color) !important;
+        border-radius: var(--search-border-radius) !important;
+        font-size: var(--search-font-size) !important;
+        padding: var(--search-padding-vertical) var(--search-padding-horizontal) !important;
+        width: var(--search-width) !important;
+        margin-bottom: var(--search-margin-bottom) !important;
+        outline: none;
+    }
+    
+    .accordion-search-input::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .accordion-common-searches {
+        display: inline-flex;
+        gap: var(--common-search-spacing);
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: var(--search-margin-bottom);
+    }
+    
+    .accordion-common-search-item {
+        color: var(--search-font-color);
+        background-color: var(--search-bg-color);
+        border: 1px solid var(--search-border-color);
+        border-radius: var(--search-border-radius);
+        font-size: calc(var(--search-font-size) - 2px);
+        padding: 4px 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+    
+    .accordion-common-search-item:hover {
+        background-color: var(--question-hover-bg-color);
+        transform: translateY(-1px);
+    }
+    
+    .accordion-common-search-item:active {
+        transform: translateY(0);
+    }
+    
+    .accordion-search-highlight {
+        background-color: var(--search-highlight-bg-color);
+        color: var(--search-highlight-text-color);
+        padding: 0px 0px;
+        border-radius: 2px;
+    }
+    
+    .text-no-background {
+        color: var(--text-no-background-color);
+        font-size: var(--text-no-background-size);
+    }
+    
+    /* ============================================
+       ACCORDION TABLE STYLES
+       ============================================ */
+    .accordion-container {
+        max-width: 100%;
+    }
+    
+    .accordion-item {
+        margin-bottom: var(--accordion-spacing);
+    }
+    
+    .accordion-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: var(--question-font-family);
+        font-size: var(--question-font-size);
+    }
+    
+    .accordion-question-row {
+        background-color: var(--question-bg-color);
+        color: var(--question-font-color);
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    .accordion-question-row a {
+        color: var(--question-link-color);
+        text-decoration: underline;
+        display: block; /* make the whole cell clickable */
+    }
+
+    .accordion-question-row a:visited {
+        color: var(--question-link-color);
+    }
+    
+    .accordion-item:nth-child(even) .accordion-question-row {
+        background-color: var(--row-even-bg-color);
+    }
+    
+        .accordion-item:nth-child(odd) .accordion-question-row {
+            background-color: var(--row-odd-bg-color);
+        }
+    
+        /* Explicit row coloring for dynamic updates */
+        .accordion-question-row.even-row {
+            background-color: var(--row-even-bg-color) !important;
+        }
+    
+        .accordion-question-row.odd-row {
+            background-color: var(--row-odd-bg-color) !important;
+        }
+    
+    .accordion-question-row.no-answer {
+        cursor: default;
+    }
+    
+    .accordion-question-row:not(.no-answer):hover {
+        background-color: var(--question-hover-bg-color);
+        color: var(--question-hover-font-color);
+    }
+    
+    .accordion-question-row td {
+        padding: var(--question-padding-vertical) var(--question-padding-horizontal);
+        border: 1px solid var(--question-border-color);
+    }
+    
+    /* Remove bottom border from question row when answer is collapsed */
+    .accordion-item:not(.active):not(.last-visible-item) .accordion-question-row td {
+        border-bottom-width: 0px;
+    }
+    
+    /* Restore bottom border when answer is expanded */
+    .accordion-item.active .accordion-question-row td {
+        border-bottom-width: 1px;
+    }
+    
+    /* Auto-number column styling */
+    .accordion-auto-number-cell {
+        width: var(--auto-number-column-width);
+        max-width: var(--auto-number-column-width);
+        white-space: nowrap;
+        overflow: hidden;
+    }
+    
+    /* Remove padding for image cells */
+    .accordion-question-row td.accordion-image-cell {
+        padding: 0;
+        line-height: 0;
+        vertical-align: middle;
+        text-align: center;
+    }
+    
+    .accordion-image-content {
+        display: block;
+        margin: 0 auto;
+    }
+    
+    /* First item top-left corner */
+    .accordion-item:first-child .accordion-question-row td:first-child {
+        border-top-left-radius: var(--border-radius);
+    }
+    
+    /* First item top-right corner */
+    .accordion-item:first-child .accordion-question-row td:last-child {
+        border-top-right-radius: var(--border-radius);
+    }
+    
+    /* Last item bottom corners - for rows WITHOUT answers */
+    .accordion-item:last-child .accordion-question-row.no-answer td:first-child {
+        border-bottom-left-radius: var(--border-radius);
+    }
+    
+    .accordion-item:last-child .accordion-question-row.no-answer td:last-child {
+        border-bottom-right-radius: var(--border-radius);
+    }
+    
+    /* Last item bottom corners - for answer cells */
+    .accordion-item:last-child .accordion-answer-cell {
+        border-bottom-left-radius: var(--border-radius);
+        border-bottom-right-radius: var(--border-radius);
+    }
+    
+    .accordion-answer-row {
+        background-color: var(--answer-bg-color);
+        color: var(--answer-font-color);
+    }
+    
+    .accordion-answer-cell {
+        padding: 0;
+        border: 1px solid var(--answer-border-color);
+        border-top: none;
+    }
+    
+    /* Hide answer cell border when collapsed */
+    .accordion-item:not(.active) .accordion-answer-cell {
+        border: none;
+    }
+    
+    .accordion-answer-wrapper {
+        max-height: 0;
+        overflow: hidden;
+    }
+    
+    .accordion-item.active .accordion-answer-wrapper {
+        max-height: 5000px;
+    }
+    
+    .accordion-answer-content {
+	    padding-left: var(--answer-padding-left);
+		padding-right: var(--answer-padding-right);
+        padding-top: var(--answer-padding-top);
+		padding-bottom: var(--answer-padding-bottom);
+        line-height: 1.6;
+        font-family: var(--answer-font-family);
+        font-size: var(--answer-font-size);
+        opacity: 0;
+        transform: translateY(0);
+        transition: opacity 0.1s, transform 0.1s;
+    }
+    
+    .accordion-item.active .accordion-answer-content {
+        opacity: 1;
+    }
+    
+    .accordion-answer-content img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin: 10px 0px;
+    }
+    
+    .accordion-answer-content iframe {
+        margin: 10px 0;
+        border: none;
+    }
+    
+    .accordion-answer-content a {
+        color: #0099ff;
+        text-decoration: underline;
+    }
+    
+    .accordion-answer-content a:hover {
+        color: #00ccff;
+    }
+	
+	.accordion-answer-thumbnail {
+		float: right;
+		margin-left: 10px;
+		margin-bottom: 10px;
+		max-width: 300px;
+		
+	}
+
+	.accordion-answer-thumbnail img {
+		width: 100%;
+		height: auto;
+		display: block;
+		border: 1px solid var(--answer-border-color);
+		border-radius: 8px;
+		border-radius: 8px;
+	}
+    
+    /* Text effect animations */
+    @keyframes slideFromLeft {
+        from { transform: translateX(-30px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    
+    @keyframes slideFromRight {
+        from { transform: translateX(30px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    
+    @keyframes slideFromUp {
+        from { transform: translateY(30px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    
+    @keyframes slideFromDown {
+        from { transform: translateY(-30px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    
+    @keyframes bounceFromLeft {
+        0% { transform: translateX(-50px); opacity: 0; }
+        60% { transform: translateX(10px); opacity: 1; }
+        80% { transform: translateX(-5px); }
+        100% { transform: translateX(0); }
+    }
+    
+    @keyframes bounceFromRight {
+        0% { transform: translateX(50px); opacity: 0; }
+        60% { transform: translateX(-10px); opacity: 1; }
+        80% { transform: translateX(5px); }
+        100% { transform: translateX(0); }
+    }
+    
+    @keyframes bounceFromUp {
+        0% { transform: translateY(50px); opacity: 0; }
+        60% { transform: translateY(-10px); opacity: 1; }
+        80% { transform: translateY(5px); }
+        100% { transform: translateY(0); }
+    }
+    
+    @keyframes bounceFromDown {
+        0% { transform: translateY(-50px); opacity: 0; }
+        60% { transform: translateY(10px); opacity: 1; }
+        80% { transform: translateY(-5px); }
+        100% { transform: translateY(0); }
+    }
+    
+    @keyframes zoomIn {
+        from { transform: scale(0.3); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    @keyframes blurIn {
+        from { filter: blur(10px); opacity: 0; }
+        to { filter: blur(0); opacity: 1; }
+    }
+    
+    @keyframes rotateIn {
+        from { transform: rotate(-180deg) scale(0.5); opacity: 0; }
+        to { transform: rotate(0) scale(1); opacity: 1; }
+    }
+    
+    @keyframes elasticIn {
+        0% { transform: scale(0); opacity: 0; }
+        50% { transform: scale(1.2); opacity: 0.8; }
+        70% { transform: scale(0.9); opacity: 1; }
+        85% { transform: scale(1.05); }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    
+    .accordion-item.hidden {
+        display: none;
+    }
+    
+    .loading-message {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6c757d;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    .spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #667eea;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 15px;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .error-message {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 20px;
+        border-radius: var(--border-radius);
+        border: 1px solid #f5c6cb;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    .error-message.auto-retry {
+        background: #fff3cd;
+        color: #856404;
+        border-color: #ffeaa7;
+        cursor: pointer;
+    }
+    
+    .error-message.auto-retry:hover {
+        background: #ffe8a1;
+    }
+    
+    .no-results-message {
+        text-align: center;
+        padding: 20px;
+        color: var(--answer-font-color);
+        font-family: var(--answer-font-family);
+        font-size: var(--answer-font-size);
+    }
