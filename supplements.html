@@ -3,21 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Sheets Data To HTML Table</title>
+    <title>GSheets To HTML Table - Supplements</title>
     <link rel="stylesheet" href="Google Sheets Data To HTML Table v1.00.css">
+    <style>
+        body {
+            background-color: #000;
+        }
+    </style>
 </head>
 <body>
     <div class="accordion-wrapper"></div>
 
-    <script>
+<script>
     // ============================================
     // CONFIGURATION VARIABLES
     // ============================================
     const CONFIG = {
-        SPREADSHEET_ID: '1B1q-dS1gqTvM1mH1c7PALWT0n1LqbhYHk6J0wbLYh8o',
+        SPREADSHEET_ID: '186etvuSewz3-AkKJWZwe00BAy1ZBkq3nUWg4uQsmpnY',
         API_KEY: 'AIzaSyCkKOY3psLW59GsNN7PqVMsn7ZEejKFQPE',
         RANGE: 'Sheet1',
-        STARTING_ROW: 1,
+        STARTING_ROW: 2,
         HEADER_ROW_NUMBER: 0, // Set to 0 to hide headers, otherwise set to the spreadsheet row number to keep headers visible (e.g., 1 for the first row)
         USE_CORS_PROXY: false,
         FETCH_DATA_ON_PAGE_LOAD: true,
@@ -34,12 +39,12 @@
         YOUTUBE_EMBED_HEIGHT: 315,
         
         // Column Configuration
-        COLUMN_WIDTHS: ['','','',''], // Width in pixels for each column (empty string = auto width)
+        COLUMN_WIDTHS: ['51','','',''], // Width in pixels for each column (empty string = auto width)
         HEADER_ROW_COLUMNS_ALIGN: ['center','center','center','center'],
         QUESTION_COLUMNS_ALIGN: ['left','left','center','center'],
-        QUESTION_COLUMNS: ['SHOW', 'B'],
-        ANSWER_COLUMN: 'C',
-        URL_COLUMNS: ['D'],
+        QUESTION_COLUMNS: ['B','D'],
+        ANSWER_COLUMN: 'E',
+        URL_COLUMNS: ['C'],
         SHOW_HIDE_ICON: '›',
         
         // Search Configuration
@@ -53,10 +58,12 @@
         // Display Configuration
         AUTO_NUMBER_ROWS: 1, // Starting number for auto-numbering rows (set to null to disable)
         AUTO_NUMBER_COLUMN_WIDTH: 50, // Width in pixels for auto-number column (default: 50)
-        QUESTION_PREFIX: '<u><b>Question:</b></u>&nbsp;', // HTML/text prefix for first question column (empty string to disable)
-        ANSWER_PREFIX: '<u><b>Answer:</b></u><br>', // HTML/text to show before answer content (empty string to disable)
-        SHOW_ENLARGED_THUMBNAIL_IN_ANSWER_ROW: false, // Set to true to show enlarged thumbnail in answer row
-
+        QUESTION_PREFIX: '',
+        //QUESTION_PREFIX: '<u><b>Question:</b></u>&nbsp;', // HTML/text prefix for first question column (empty string to disable)
+        ANSWER_PREFIX: '',
+        //ANSWER_PREFIX: '<u><b>Answer:</b></u><br>', // HTML/text to show before answer content (empty string to disable)
+		SHOW_ENLARGED_THUMBNAIL_IN_ANSWER_ROW: true, // Display enlarged version of leftmost thumbnail in answer row
+        
         // Animation Configuration
         ANSWER_TRANSITION_SPEED: 555, // Transition speed in milliseconds (e.g., 200, 400, 600, 800)
         ANSWER_TRANSITION_EFFECT: 'snap', // Options: 'smooth', 'ease-in', 'ease-out', 'bounce', 'snap'

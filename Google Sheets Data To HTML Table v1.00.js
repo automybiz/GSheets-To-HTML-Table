@@ -206,78 +206,82 @@
     function convertURLsToLinks(text, isInCell = false) {
         if (!text) return '';
         
-        console.log('[Accordion] Processing cell content:', text.substring(0, 100));
-        
         // First check: Is the entire cell just an image URL?
         const directImageUrl = isDirectImageURL(text);
         if (directImageUrl) {
-            console.log('[Accordion] Rendering direct image URL:', directImageUrl);
             return generateImageTag(directImageUrl, isInCell);
         }
         
         // Second check: Is it an =IMAGE() formula?
         const imageUrl = extractImageFromCell(text);
         if (imageUrl) {
-            console.log('[Accordion] Rendering IMAGE formula:', imageUrl);
             return generateImageTag(imageUrl, isInCell);
         }
         
         let result = preserveWhitespace(text);
         result = convertNewlinesToBR(result);
         
-        const urlPattern = /(https?:\/\/[^\s<]+)/g;
-        const urls = text.match(urlPattern) || [];
+        // Regex to match URLs but capture if they are inside href/src attributes
+        // Group 1: Matches attribute prefix (href=", src=", href=', src=')
+        // Group 2: Matches the URL inside the attribute quotes
+        // Group 3: Matches the closing quote
+        // Group 4: Matches a standalone URL (not inside an attribute)
+        const urlRegex = /(href="|src="|href='|src=')((?:https?:\/\/)[^"']+)("|')|(https?:\/\/[^\s<]+)/g;
         
-        urls.forEach(url => {
-            let replacement = url;
-            let isProcessed = false;
+        result = result.replace(urlRegex, (match, attrPrefix, urlInAttr, quote, plainUrl) => {
+            // If attrPrefix is defined, it means we matched an existing HTML attribute (Group 1)
+            // We should return the whole match unchanged to preserve the existing link/image
+            if (attrPrefix) {
+                return match;
+            }
             
+            // Otherwise, we matched a standalone URL (Group 4)
+            const url = plainUrl;
+            
+            // YouTube Logic: Check for YouTube links to embed
             if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                // Skip embedding for root domains
                 if (url === 'https://www.youtube.com' || url === 'https://www.youtube.com/' || 
                     url === 'https://youtube.com' || url === 'https://youtube.com/' ||
                     url === 'https://youtu.be' || url === 'https://youtu.be/') {
-                    replacement = `<a href="${url}" target="_blank">${url}</a>`;
-                    isProcessed = true;
-                } else {
-                    let videoId = null;
-                    let timeParam = '';
-                    let playlistParam = '';
-                    
-                    let match = url.match(/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/);
+                    return `<a href="${url}" target="_blank">${url}</a>`;
+                }
+                
+                let videoId = null;
+                let timeParam = '';
+                let playlistParam = '';
+                
+                // Extract Video ID
+                let match = url.match(/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/);
+                if (match) {
+                    videoId = match[1];
+                    const tMatch = url.match(/[?&]t=(\d+)/);
+                    if (tMatch) timeParam = `?start=${tMatch[1]}`;
+                    const listMatch = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+                    if (listMatch) playlistParam = `&list=${listMatch[1]}`;
+                }
+                
+                if (!videoId) {
+                    match = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
                     if (match) {
                         videoId = match[1];
                         const tMatch = url.match(/[?&]t=(\d+)/);
                         if (tMatch) timeParam = `?start=${tMatch[1]}`;
-                        const listMatch = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
-                        if (listMatch) playlistParam = `&list=${listMatch[1]}`;
                     }
-                    
-                    if (!videoId) {
-                        match = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
-                        if (match) {
-                            videoId = match[1];
-                            const tMatch = url.match(/[?&]t=(\d+)/);
-                            if (tMatch) timeParam = `?start=${tMatch[1]}`;
-                        }
-                    }
-                    
-                    if (videoId) {
-                        replacement = `<iframe width="${CONFIG.YOUTUBE_EMBED_WIDTH}" height="${CONFIG.YOUTUBE_EMBED_HEIGHT}" src="https://www.youtube.com/embed/${videoId}${timeParam}${playlistParam}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
-                        isProcessed = true;
-                    }
+                }
+                
+                if (videoId) {
+                    return `<iframe width="${CONFIG.YOUTUBE_EMBED_WIDTH}" height="${CONFIG.YOUTUBE_EMBED_HEIGHT}" src="https://www.youtube.com/embed/${videoId}${timeParam}${playlistParam}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
                 }
             }
             
-            if (!isProcessed && isImageURL(url)) {
-                replacement = generateImageTag(url, isInCell);
-                isProcessed = true;
+            // Image Logic: Check if the URL is a direct image link
+            if (isImageURL(url)) {
+                return generateImageTag(url, isInCell);
             }
             
-            if (!isProcessed) {
-                replacement = `<a href="${url}" target="_blank">${url}</a>`;
-            }
-            
-            result = result.replace(url, replacement);
+            // Default: Convert plain URL to clickable link
+            return `<a href="${url}" target="_blank">${url}</a>`;
         });
         
         return result;
@@ -584,6 +588,106 @@
     // ============================================
     // DATA FETCHING
     // ============================================
+    function applyTextFormatting(cell) {
+        if (!cell || !cell.userEnteredValue) return '';
+        
+        const text = cell.userEnteredValue.stringValue || String(cell.userEnteredValue.numberValue || cell.userEnteredValue.boolValue || '');
+        if (!text) return '';
+        
+        // If no format runs, return the text as-is
+        if (!cell.textFormatRuns || cell.textFormatRuns.length === 0) {
+            return text;
+        }
+
+        let html = '';
+        const runs = cell.textFormatRuns;
+        
+        for (let i = 0; i < runs.length; i++) {
+            const run = runs[i];
+            const nextRun = runs[i + 1];
+            const start = run.startIndex || 0;
+            const end = nextRun ? (nextRun.startIndex || text.length) : text.length;
+            const segment = text.substring(start, end);
+            
+            if (!segment) continue;
+
+            const format = run.format || {};
+            let style = [];
+            let wrapperStart = '';
+            let wrapperEnd = '';
+
+            // Debug log for links
+            if (format.link) {
+                console.log('[Accordion] Found link in rich text run:', format.link.uri, 'for segment:', segment);
+            }
+
+            // 1. Handle Hyperlink (Innermost wrapper)
+            if (format.link && format.link.uri) {
+                wrapperStart += `<a href="${format.link.uri}" target="_blank">`;
+                wrapperEnd = '</a>' + wrapperEnd;
+            }
+
+            // 2. Handle Formatting tags
+            if (format.underline) {
+                wrapperStart += '<u>';
+                wrapperEnd = '</u>' + wrapperEnd;
+            }
+            if (format.strikethrough) {
+                wrapperStart += '<s>';
+                wrapperEnd = '</s>' + wrapperEnd;
+            }
+            if (format.italic) {
+                wrapperStart += '<i>';
+                wrapperEnd = '</i>' + wrapperEnd;
+            }
+            if (format.bold) {
+                wrapperStart += '<b>';
+                wrapperEnd = '</b>' + wrapperEnd;
+            }
+
+            // 3. Handle Text color (Outermost wrapper inside the span)
+            if (format.foregroundColor) {
+                const color = format.foregroundColor;
+                const r = Math.round((color.red || 0) * 255);
+                const g = Math.round((color.green || 0) * 255);
+                const b = Math.round((color.blue || 0) * 255);
+                style.push(`color: rgb(${r},${g},${b})`);
+            }
+
+            // Apply color span
+            if (style.length > 0) {
+                wrapperStart = `<span style="${style.join('; ')}">` + wrapperStart;
+                wrapperEnd = wrapperEnd + '</span>';
+            }
+            
+            html += wrapperStart + segment + wrapperEnd;
+        }
+        
+        return html;
+    }
+
+    function processRichTextResponse(data) {
+        if (!data.sheets || !data.sheets[0] || !data.sheets[0].data || !data.sheets[0].data[0].rowData) {
+            console.error('[Accordion] Invalid data structure:', data);
+            throw new Error('Invalid data structure from Google Sheets API');
+        }
+
+        const rows = data.sheets[0].data[0].rowData;
+        const processedValues = [];
+
+        rows.forEach(row => {
+            if (!row.values) {
+                processedValues.push([]);
+                return;
+            }
+
+            const rowValues = row.values.map(cell => applyTextFormatting(cell));
+            processedValues.push(rowValues);
+        });
+
+        return processedValues;
+    }
+
     async function loadData() {
         const content = document.getElementById(INSTANCE_ID + '-content');
         if (!content) {
@@ -595,7 +699,8 @@
         console.log('[Accordion] Starting data fetch');
         
         try {
-            const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}/values/${CONFIG.RANGE}?key=${CONFIG.API_KEY}`;
+            // Fetches rich text data
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}?ranges=${CONFIG.RANGE}&includeGridData=true&fields=sheets(data(rowData(values(userEnteredValue%2CtextFormatRuns))))&key=${CONFIG.API_KEY}`;
             const fetchUrl = CONFIG.USE_CORS_PROXY ? `https://cors-anywhere.herokuapp.com/${url}` : url;
             
             const response = await fetch(fetchUrl);
@@ -607,13 +712,16 @@
             }
             
             const data = await response.json();
-            console.log('[Accordion] Data received:', data.values.length, 'rows');
+            console.log('[Accordion] Data received');
     
-            if (!data.values || data.values.length === 0) {
+            if (!data.sheets || data.sheets.length === 0) {
                 throw new Error('No data found in spreadsheet');
             }
+
+            const values = processRichTextResponse(data);
+            console.log('[Accordion] Processed', values.length, 'rows from rich text');
     
-            processData(data.values);
+            processData(values);
             
         } catch (error) {
             console.error('[Accordion] Error:', error);
