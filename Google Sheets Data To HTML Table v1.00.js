@@ -55,6 +55,7 @@
     // STATE
     // ============================================
     let allData = [];
+    const loadedFonts = new Set();
     let headers = [];
     let searchTimeout = null;
     let isFirstDataRow = true;
@@ -201,6 +202,25 @@
         }
         
         return null;
+    }
+
+    function loadGoogleFont(fontName) {
+        if (!fontName || loadedFonts.has(fontName)) return;
+
+        // Skip default web-safe fonts
+        const webSafeFonts = ['Arial', 'Verdana', 'Times New Roman', 'Courier New', 'Georgia', 'Trebuchet MS', 'Comic Sans MS', 'Impact'];
+        if (webSafeFonts.includes(fontName)) return;
+
+        console.log('[Accordion] Automatically loading Google Font:', fontName);
+        
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        // Normalize font name for Google Fonts API (spaces to +)
+        const normalizedName = fontName.replace(/\s+/g, '+');
+        link.href = `https://fonts.googleapis.com/css2?family=${normalizedName}&display=swap`;
+        
+        document.head.appendChild(link);
+        loadedFonts.add(fontName);
     }
     
     function convertURLsToLinks(text, isInCell = false) {
@@ -612,55 +632,74 @@
             if (!segment) continue;
 
             const format = run.format || {};
-            let style = [];
+            
+            // Split segment into content and trailing newlines to keep tags clean
+            // This ensures <br> tags added later remain outside the formatted spans
+            const newlineMatch = segment.match(/^([\s\S]*?)(\n+)$/);
+            let content = segment;
+            let trailing = '';
+            if (newlineMatch) {
+                content = newlineMatch[1];
+                trailing = newlineMatch[2];
+            }
+
+            if (!content && !trailing) continue;
+
             let wrapperStart = '';
             let wrapperEnd = '';
+            let style = [];
 
-            // Debug log for links
-            if (format.link) {
-                console.log('[Accordion] Found link in rich text run:', format.link.uri, 'for segment:', segment);
-            }
+            if (content) {
+                // Formatting tags (Bold, Italic, etc.)
+                if (format.underline) {
+                    wrapperStart += '<u>';
+                    wrapperEnd = '</u>' + wrapperEnd;
+                }
+                if (format.strikethrough) {
+                    wrapperStart += '<s>';
+                    wrapperEnd = '</s>' + wrapperEnd;
+                }
+                if (format.italic) {
+                    wrapperStart += '<i>';
+                    wrapperEnd = '</i>' + wrapperEnd;
+                }
+                if (format.bold) {
+                    wrapperStart += '<b>';
+                    wrapperEnd = '</b>' + wrapperEnd;
+                }
 
-            // 1. Handle Hyperlink (Innermost wrapper)
-            if (format.link && format.link.uri) {
-                wrapperStart += `<a href="${format.link.uri}" target="_blank">`;
-                wrapperEnd = '</a>' + wrapperEnd;
-            }
+                // Hyperlink (Wraps the formatting tags)
+                if (format.link && format.link.uri) {
+                    wrapperStart = `<a href="${format.link.uri}" target="_blank">` + wrapperStart;
+                    wrapperEnd = wrapperEnd + '</a>';
+                }
 
-            // 2. Handle Formatting tags
-            if (format.underline) {
-                wrapperStart += '<u>';
-                wrapperEnd = '</u>' + wrapperEnd;
-            }
-            if (format.strikethrough) {
-                wrapperStart += '<s>';
-                wrapperEnd = '</s>' + wrapperEnd;
-            }
-            if (format.italic) {
-                wrapperStart += '<i>';
-                wrapperEnd = '</i>' + wrapperEnd;
-            }
-            if (format.bold) {
-                wrapperStart += '<b>';
-                wrapperEnd = '</b>' + wrapperEnd;
-            }
+                // Style properties (Outermost wrapper)
+                if (format.fontSize) {
+                    style.push(`font-size: ${format.fontSize}pt`);
+                }
+                if (format.fontFamily) {
+                    // Automatically load the font if needed
+                    loadGoogleFont(format.fontFamily);
+                    // Use single quotes for font name to avoid double-quote collision in HTML attributes
+                    style.push(`font-family: '${format.fontFamily}'`);
+                }
+                if (format.foregroundColor) {
+                    const color = format.foregroundColor;
+                    const r = Math.round((color.red || 0) * 255);
+                    const g = Math.round((color.green || 0) * 255);
+                    const b = Math.round((color.blue || 0) * 255);
+                    style.push(`color: rgb(${r},${g},${b})`);
+                }
 
-            // 3. Handle Text color (Outermost wrapper inside the span)
-            if (format.foregroundColor) {
-                const color = format.foregroundColor;
-                const r = Math.round((color.red || 0) * 255);
-                const g = Math.round((color.green || 0) * 255);
-                const b = Math.round((color.blue || 0) * 255);
-                style.push(`color: rgb(${r},${g},${b})`);
-            }
-
-            // Apply color span
-            if (style.length > 0) {
-                wrapperStart = `<span style="${style.join('; ')}">` + wrapperStart;
-                wrapperEnd = wrapperEnd + '</span>';
+                // Apply style span
+                if (style.length > 0) {
+                    wrapperStart = `<span style="${style.join('; ')}">` + wrapperStart;
+                    wrapperEnd = wrapperEnd + '</span>';
+                }
             }
             
-            html += wrapperStart + segment + wrapperEnd;
+            html += wrapperStart + content + wrapperEnd + trailing;
         }
         
         return html;
