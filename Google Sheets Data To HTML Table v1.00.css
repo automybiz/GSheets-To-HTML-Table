@@ -24,8 +24,8 @@
         /* Layout */
         --accordion-spacing: 0px;
         --border-radius: 8px;
-        --question-padding-horizontal: 11px;
-        --question-padding-vertical: 6px;
+        --question-padding-horizontal: 0px; /* 11px does pretty well by default */
+        --question-padding-vertical: 0px; /* 6px does pretty well by default */
         --answer-padding-left: 22px;
         --answer-padding-right: 22px;
         --answer-padding-top: 11px;
@@ -180,10 +180,14 @@
         padding: var(--question-padding-vertical) var(--question-padding-horizontal);
         border: 1px solid var(--question-border-color);
     }
-    
-    /* Remove bottom border from question row when answer is collapsed */
-    .accordion-item:not(.active):not(.last-visible-item) .accordion-question-row td {
-        border-bottom-width: 0px;
+
+    /* Ensure thumbnail cells have no padding */
+    .accordion-question-row td.accordion-image-cell {
+        padding: 0;
+    }
+
+    .accordion-image-cell {
+        padding: 0px 0p;
     }
     
     /* Restore bottom border when answer is expanded */
@@ -201,7 +205,6 @@
     
     /* Remove padding for image cells */
     .accordion-question-row td.accordion-image-cell {
-        padding: 0;
         line-height: 0;
         vertical-align: middle;
         text-align: center;
@@ -210,6 +213,14 @@
     .accordion-image-content {
         display: block;
         margin: 0 auto;
+    }
+    
+    /* Ensure thumbnails fill the cell without extra space */
+    .accordion-image-cell .accordion-image-content {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: fill; /* Match the stretch request */
     }
     
     /* First item top-left corner */
@@ -286,9 +297,48 @@
         margin: 10px 0px;
     }
     
+    .accordion-video-container {
+        text-align: right;
+        margin: 0px 0px;
+    }
+
     .accordion-answer-content iframe {
-        margin: 10px 0;
         border: none;
+    }
+    
+    .accordion-answer-content .lazy-youtube-placeholder {
+        display: inline-block;
+        margin: 0;
+    }
+    
+    /* ============================================
+       LAZY LOADING PLACEHOLDER STYLES
+       ============================================ */
+    .lazy-image-placeholder,
+    .lazy-youtube-placeholder {
+        transition: all 0.3s ease;
+        cursor: pointer;
+        user-select: none;
+    }
+    
+    .lazy-image-placeholder:hover,
+    .lazy-youtube-placeholder:hover {
+        background: #444 !important;
+        border-color: #888 !important;
+        transform: scale(1.02);
+    }
+    
+    .lazy-image-placeholder.loading,
+    .lazy-youtube-placeholder.loading {
+        opacity: 0.7;
+        cursor: wait;
+    }
+    
+    .lazy-image-placeholder.loading:hover,
+    .lazy-youtube-placeholder.loading:hover {
+        background: #333 !important;
+        border-color: #666 !important;
+        transform: none;
     }
     
     .accordion-answer-content a {

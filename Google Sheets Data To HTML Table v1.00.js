@@ -153,28 +153,52 @@
     
     function generateImageTag(imageUrl, isInCell = false) {
         let styles = [];
-        
-        if (CONFIG.IMAGE_MAX_WIDTH) {
-            styles.push(`max-width: ${CONFIG.IMAGE_MAX_WIDTH}px`);
+        let maxWidth, maxHeight;
+
+        if (isInCell) {
+            // Thumbnail settings
+            maxWidth = CONFIG.IMAGE_THUMB_MAX_WIDTH !== undefined ? CONFIG.IMAGE_THUMB_MAX_WIDTH : CONFIG.IMAGE_MAX_WIDTH;
+            maxHeight = CONFIG.IMAGE_THUMB_MAX_HEIGHT !== undefined ? CONFIG.IMAGE_THUMB_MAX_HEIGHT : CONFIG.IMAGE_MAX_HEIGHT;
+        } else {
+            // Answer/Expanded settings
+            maxWidth = CONFIG.IMAGE_ANSWER_MAX_WIDTH !== undefined ? CONFIG.IMAGE_ANSWER_MAX_WIDTH : 555;
+            maxHeight = CONFIG.IMAGE_ANSWER_MAX_HEIGHT !== undefined ? CONFIG.IMAGE_ANSWER_MAX_HEIGHT : null;
         }
         
-        if (CONFIG.IMAGE_MAX_HEIGHT) {
-            styles.push(`max-height: ${CONFIG.IMAGE_MAX_HEIGHT}px`);
+        if (maxWidth) {
+            styles.push(`max-width: ${maxWidth}px`);
         }
         
-        if (CONFIG.IMAGE_MAINTAIN_ASPECT_RATIO) {
+        if (maxHeight) {
+            styles.push(`max-height: ${maxHeight}px`);
+        }
+        
+        // If both width and height are set for thumbnails, stretch to fit
+        if (isInCell && maxWidth && maxHeight) {
+            styles.push(`width: ${maxWidth}px`);
+            styles.push(`height: ${maxHeight}px`);
+            styles.push('object-fit: fill');
+        } else {
             styles.push('width: auto');
             styles.push('height: auto');
             styles.push('object-fit: contain');
-        } else {
-            if (CONFIG.IMAGE_MAX_WIDTH) styles.push('width: 100%');
-            if (CONFIG.IMAGE_MAX_HEIGHT) styles.push(`height: ${CONFIG.IMAGE_MAX_HEIGHT}px`);
-            styles.push('object-fit: fill');
         }
         
         // Center the image and remove extra space
         styles.push('display: block');
-        styles.push('margin: 0 auto');
+        
+        if (isInCell) {
+            styles.push('margin: 0 auto');
+        } else {
+            const align = CONFIG.IMAGE_ANSWER_ALIGN || 'center';
+            if (align === 'left') {
+                styles.push('margin: 0 auto 0 0');
+            } else if (align === 'right') {
+                styles.push('margin: 0 0 0 auto');
+            } else {
+                styles.push('margin: 0 auto');
+            }
+        }
         
         // Add class to identify image cells for padding removal
         const className = isInCell ? 'class="accordion-image-content"' : '';
@@ -223,18 +247,223 @@
         loadedFonts.add(fontName);
     }
     
-    function convertURLsToLinks(text, isInCell = false) {
+    // ============================================
+    // HOVER EVENT MANAGEMENT
+    // ============================================
+    const hoverTimeouts = new Map();
+    const HOVER_DELAY = 300; // milliseconds before loading content on hover
+    
+    function addHoverListeners() {
+        const questionRows = document.querySelectorAll('#' + INSTANCE_ID + '-content .accordion-question-row');
+        
+        questionRows.forEach(row => {
+            // Skip header rows and rows without answers
+            if (row.classList.contains('no-answer')) return;
+            
+            row.addEventListener('mouseenter', function(e) {
+                const item = this.closest('.accordion-item');
+                if (!item) return;
+                
+                const itemId = item.id;
+                if (hoverTimeouts.has(itemId)) {
+                    clearTimeout(hoverTimeouts.get(itemId));
+                }
+                
+                const timeoutId = setTimeout(() => {
+                    processLazyContent(item);
+                    hoverTimeouts.delete(itemId);
+                }, HOVER_DELAY);
+                
+                hoverTimeouts.set(itemId, timeoutId);
+            });
+            
+            row.addEventListener('mouseleave', function(e) {
+                const item = this.closest('.accordion-item');
+                if (!item) return;
+                
+                const itemId = item.id;
+                if (hoverTimeouts.has(itemId)) {
+                    clearTimeout(hoverTimeouts.get(itemId));
+                    hoverTimeouts.delete(itemId);
+                }
+            });
+            
+            // Also load content when clicking to expand
+            row.addEventListener('click', function(e) {
+                // Don't interfere with link clicks
+                if (e.target.tagName === 'A' || e.target.closest('a')) return;
+                
+                const item = this.closest('.accordion-item');
+                if (item) {
+                    // Process immediately on click (no delay)
+                    processLazyContent(item);
+                    
+                    // Clear any pending hover timeouts
+                    const itemId = item.id;
+                    if (hoverTimeouts.has(itemId)) {
+                        clearTimeout(hoverTimeouts.get(itemId));
+                        hoverTimeouts.delete(itemId);
+                    }
+                }
+            });
+        });
+        
+        console.log('[Accordion] Added hover listeners to', questionRows.length, 'question rows');
+    }
+    
+    // ============================================
+    // LAZY LOADING FUNCTIONS
+    // ============================================
+    function generateLazyImagePlaceholder(imageUrl, isInCell = false) {
+        const className = isInCell ? 'class="accordion-image-content lazy-image-placeholder"' : 'class="lazy-image-placeholder"';
+        const placeholderStyle = isInCell ? 'display: block; margin: 0 auto; background: #333; border: 2px dashed #666; border-radius: 4px; text-align: center; color: #999; font-size: 12px; padding: 20px 10px;' : 'background: #333; border: 2px dashed #666; border-radius: 4px; text-align: center; color: #999; font-size: 14px; padding: 40px 20px; margin: 10px 0;';
+        
+        return `<div ${className} data-original-url="${imageUrl}" style="${placeholderStyle}" onclick="window.loadLazyImage(this)">📷 Image (Click to load)</div>`;
+    }
+    
+    function generateLazyYouTubePlaceholder(url, videoId, videoTitle, timeParam, playlistParam) {
+        const placeholderStyle = 'background: #222; border: 2px dashed #666; border-radius: 4px; text-align: center; color: #999; font-size: 14px; padding: 40px 20px; cursor: pointer;';
+        const videoData = encodeURIComponent(JSON.stringify({ url, videoId, timeParam, playlistParam }));
+        
+        return `<div class="lazy-youtube-placeholder" data-video-data="${videoData}" style="${placeholderStyle}" onclick="window.loadLazyYouTube(this)">▶️ ${videoTitle} (Click to load)</div>`;
+    }
+    
+    window.loadLazyImage = function(element) {
+        if (element.classList.contains('loading')) return;
+        
+        element.classList.add('loading');
+        element.innerHTML = '⏳ Loading image...';
+        
+        const imageUrl = element.dataset.originalUrl;
+        const img = new Image();
+        
+        img.onload = function() {
+            const isInCell = element.classList.contains('accordion-image-content');
+            let styles = [];
+            let maxWidth, maxHeight;
+
+            if (isInCell) {
+                // Thumbnail settings
+                maxWidth = CONFIG.IMAGE_THUMB_MAX_WIDTH !== undefined ? CONFIG.IMAGE_THUMB_MAX_WIDTH : CONFIG.IMAGE_MAX_WIDTH;
+                maxHeight = CONFIG.IMAGE_THUMB_MAX_HEIGHT !== undefined ? CONFIG.IMAGE_THUMB_MAX_HEIGHT : CONFIG.IMAGE_MAX_HEIGHT;
+            } else {
+                // Answer/Expanded settings
+                maxWidth = CONFIG.IMAGE_ANSWER_MAX_WIDTH !== undefined ? CONFIG.IMAGE_ANSWER_MAX_WIDTH : 555;
+                maxHeight = CONFIG.IMAGE_ANSWER_MAX_HEIGHT !== undefined ? CONFIG.IMAGE_ANSWER_MAX_HEIGHT : null;
+            }
+            
+            if (maxWidth) {
+                styles.push(`max-width: ${maxWidth}px`);
+            }
+            
+            if (maxHeight) {
+                styles.push(`max-height: ${maxHeight}px`);
+            }
+            
+            if (CONFIG.IMAGE_MAINTAIN_ASPECT_RATIO) {
+                styles.push('width: auto');
+                styles.push('height: auto');
+                styles.push('object-fit: contain');
+            } else {
+                if (maxWidth) styles.push('width: 100%');
+                if (maxHeight) styles.push(`height: ${maxHeight}px`);
+                styles.push('object-fit: fill');
+            }
+            
+            styles.push('display: block');
+            
+            if (isInCell) {
+                styles.push('margin: 0 auto');
+            } else {
+                const align = CONFIG.IMAGE_ANSWER_ALIGN || 'center';
+                if (align === 'left') {
+                    styles.push('margin: 0 auto 0 0');
+                } else if (align === 'right') {
+                    styles.push('margin: 0 0 0 auto');
+                } else {
+                    styles.push('margin: 0 auto');
+                }
+            }
+            
+            const className = isInCell ? 'class="accordion-image-content"' : '';
+            const finalHtml = `<img src="${imageUrl}" ${className} style="${styles.join('; ')}" alt="Image" loading="lazy">`;
+            
+            element.outerHTML = finalHtml;
+        };
+        
+        img.onerror = function() {
+            element.innerHTML = '❌ Failed to load image<br><a href="' + imageUrl + '" target="_blank" style="color: #0ff;">Open in new tab</a>';
+            element.classList.remove('loading');
+        };
+        
+        img.src = imageUrl;
+    };
+    
+    window.loadLazyYouTube = function(element) {
+        if (element.classList.contains('loading')) return;
+        
+        element.classList.add('loading');
+        element.innerHTML = '⏳ Loading video...';
+        
+        try {
+            const videoData = JSON.parse(decodeURIComponent(element.dataset.videoData));
+            const { url, videoId, timeParam, playlistParam } = videoData;
+            
+            const iframe = document.createElement('iframe');
+            iframe.width = CONFIG.YOUTUBE_EMBED_WIDTH;
+            iframe.height = CONFIG.YOUTUBE_EMBED_HEIGHT;
+            iframe.src = `https://www.youtube.com/embed/${videoId}${timeParam}${playlistParam}`;
+            iframe.frameBorder = '0';
+            iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+            iframe.allowFullscreen = true;
+            iframe.style.border = 'none';
+            
+            element.outerHTML = iframe.outerHTML;
+        } catch (error) {
+            console.error('[Accordion] Error loading YouTube video:', error);
+            element.innerHTML = '❌ Failed to load video';
+            element.classList.remove('loading');
+        }
+    };
+    
+    function processLazyContent(rowElement) {
+        if (!rowElement || rowElement.dataset.lazyProcessed) return;
+        
+        const lazyImages = rowElement.querySelectorAll('.lazy-image-placeholder');
+        const lazyYouTube = rowElement.querySelectorAll('.lazy-youtube-placeholder');
+        
+        // Process images
+        lazyImages.forEach(placeholder => {
+            window.loadLazyImage(placeholder);
+        });
+        
+        // Process YouTube videos
+        lazyYouTube.forEach(placeholder => {
+            window.loadLazyYouTube(placeholder);
+        });
+        
+        // Mark as processed
+        rowElement.dataset.lazyProcessed = 'true';
+    }
+    
+    function convertURLsToLinks(text, isInCell = false, lazyMode = false) {
         if (!text) return '';
         
         // First check: Is the entire cell just an image URL?
         const directImageUrl = isDirectImageURL(text);
         if (directImageUrl) {
+            if (lazyMode) {
+                return generateLazyImagePlaceholder(directImageUrl, isInCell);
+            }
             return generateImageTag(directImageUrl, isInCell);
         }
         
         // Second check: Is it an =IMAGE() formula?
         const imageUrl = extractImageFromCell(text);
         if (imageUrl) {
+            if (lazyMode) {
+                return generateLazyImagePlaceholder(imageUrl, isInCell);
+            }
             return generateImageTag(imageUrl, isInCell);
         }
         
@@ -246,7 +475,8 @@
         // Group 2: Matches the URL inside the attribute quotes
         // Group 3: Matches the closing quote
         // Group 4: Matches a standalone URL (not inside an attribute)
-        const urlRegex = /(href="|src="|href='|src=')((?:https?:\/\/)[^"']+)("|')|(https?:\/\/[^\s<]+)/g;
+        // Note: We optionally match a following <br> tag for standalone URLs to prevent double line breaks
+        const urlRegex = /(href="|src="|href='|src=')((?:https?:\/\/)[^"']+)("|')|(https?:\/\/[^\s<]+)(?:\s*<br>)?/g;
         
         result = result.replace(urlRegex, (match, attrPrefix, urlInAttr, quote, plainUrl) => {
             // If attrPrefix is defined, it means we matched an existing HTML attribute (Group 1)
@@ -270,6 +500,7 @@
                 let videoId = null;
                 let timeParam = '';
                 let playlistParam = '';
+                let videoTitle = 'YouTube Video';
                 
                 // Extract Video ID
                 let match = url.match(/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/);
@@ -291,12 +522,23 @@
                 }
                 
                 if (videoId) {
-                    return `<iframe width="${CONFIG.YOUTUBE_EMBED_WIDTH}" height="${CONFIG.YOUTUBE_EMBED_HEIGHT}" src="https://www.youtube.com/embed/${videoId}${timeParam}${playlistParam}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+                    const videoHtml = lazyMode 
+                        ? generateLazyYouTubePlaceholder(url, videoId, videoTitle, timeParam, playlistParam)
+                        : `<iframe width="${CONFIG.YOUTUBE_EMBED_WIDTH}" height="${CONFIG.YOUTUBE_EMBED_HEIGHT}" src="https://www.youtube.com/embed/${videoId}${timeParam}${playlistParam}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+                    
+                    if (!isInCell) {
+                        const align = CONFIG.YOUTUBE_EMBED_ALIGN || 'right';
+                        return `<div class="accordion-video-container" style="text-align: ${align}">${videoHtml}</div>`;
+                    }
+                    return videoHtml;
                 }
             }
             
             // Image Logic: Check if the URL is a direct image link
             if (isImageURL(url)) {
+                if (lazyMode) {
+                    return generateLazyImagePlaceholder(url, isInCell);
+                }
                 return generateImageTag(url, isInCell);
             }
             
@@ -929,17 +1171,18 @@
                 
 				questionColumnIndices.forEach((colIndex, i) => {
 					const cellValue = row[colIndex] || '';
-					// Add question prefix to first question column only (but not for header rows)
-					const questionPrefix = (i === 0 && CONFIG.QUESTION_PREFIX && !isHeaderRow && !forceDisplay) ? CONFIG.QUESTION_PREFIX : '';
+					
+					// Check if cell contains an image URL first
+					const directImageUrl = isDirectImageURL(cellValue);
+
+					// Add question prefix to first question column only (but not for header rows or image thumbnails)
+					const questionPrefix = (i === 0 && CONFIG.QUESTION_PREFIX && !isHeaderRow && !forceDisplay && !directImageUrl) ? CONFIG.QUESTION_PREFIX : '';
 
 					// Optional URL for this question column (from CONFIG.URL_COLUMNS)
 					let linkedValue = '';
 					const urlColIndex = urlColumnIndices[i];
 					const rawUrl = (typeof urlColIndex === 'number') ? (row[urlColIndex] || '').toString().trim() : '';
 					const hasUrl = rawUrl && /^https?:\/\//i.test(rawUrl);
-
-					// Check if cell contains an image URL first
-					const directImageUrl = isDirectImageURL(cellValue);
 					
 					if (directImageUrl && hasUrl) {
 						// Cell has image URL AND a link URL - wrap image in link
@@ -951,8 +1194,8 @@
 						questionHtml = convertNewlinesToBR(questionHtml);
 						linkedValue = `<a href="${rawUrl}" target="_blank">${questionPrefix}${questionHtml}</a>`;
 					} else {
-						// No link URL - use existing URL/image detection
-						const processedValue = convertURLsToLinks(cellValue, true);
+						// No link URL - use existing URL/image detection. No lazy loading for question cells.
+						const processedValue = convertURLsToLinks(cellValue, true, false);
 						linkedValue = questionPrefix + processedValue;
 					}
 
@@ -972,7 +1215,7 @@
                 
 				if (answer) {
 					const answerPrefix = CONFIG.ANSWER_PREFIX || '';
-					const processedAnswer = convertURLsToLinks(answer, false);
+					const processedAnswer = convertURLsToLinks(answer, false, true);
 					
 					// Get enlarged thumbnail if enabled
 					let enlargedThumbnail = '';
@@ -1009,6 +1252,9 @@
         
         html += '</table></div>';
         content.innerHTML = html;
+        
+        // Add hover event listeners for lazy loading
+        addHoverListeners();
         
         // Mark the last item as last-visible-item on initial load
         const allItems = content.querySelectorAll('.accordion-item');

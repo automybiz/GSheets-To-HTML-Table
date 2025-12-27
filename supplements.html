@@ -30,13 +30,16 @@
         AUTO_REFETCH_DATA_ON_ERROR_DELAY: 1500,
         
         // Image Configuration
-        IMAGE_MAX_WIDTH: 50, // Maximum width in pixels (set to null for no limit)
-        IMAGE_MAX_HEIGHT: null, // Maximum height in pixels (set to null for no limit)
-        IMAGE_MAINTAIN_ASPECT_RATIO: true, // true = maintain proportions, false = stretch to fit
+        IMAGE_THUMB_MAX_WIDTH: 50, // Maximum width in pixels for thumbnails (set to null for no limit)
+        IMAGE_THUMB_MAX_HEIGHT: 50, // Maximum height in pixels for thumbnails (set to null for no limit)
+        IMAGE_ANSWER_MAX_WIDTH: 555, // Maximum width in pixels for answer images (set to null for no limit)
+        IMAGE_ANSWER_MAX_HEIGHT: null, // Maximum height in pixels for answer images (set to null for no limit)
+        IMAGE_ANSWER_ALIGN: 'center', // Options: 'left', 'center', 'right'. Only applies when video is inside an answer cell.
         
         // Video Configuration
         YOUTUBE_EMBED_WIDTH: 560,
         YOUTUBE_EMBED_HEIGHT: 315,
+        YOUTUBE_EMBED_ALIGN: 'center', // Options: 'left', 'center', 'right'. Only applies when video is inside an answer cell.
         
         // Column Configuration
         COLUMN_WIDTHS: ['51','','',''], // Width in pixels for each column (empty string = auto width)
@@ -58,7 +61,7 @@
         // Display Configuration
         AUTO_NUMBER_ROWS: 1, // Starting number for auto-numbering rows (set to null to disable)
         AUTO_NUMBER_COLUMN_WIDTH: 50, // Width in pixels for auto-number column (default: 50)
-        QUESTION_PREFIX: '',
+        QUESTION_PREFIX: ' &nbsp; &nbsp; &nbsp;',
         //QUESTION_PREFIX: '<u><b>Question:</b></u>&nbsp;', // HTML/text prefix for first question column (empty string to disable)
         ANSWER_PREFIX: '',
         //ANSWER_PREFIX: '<u><b>Answer:</b></u><br>', // HTML/text to show before answer content (empty string to disable)

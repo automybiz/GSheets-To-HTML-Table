@@ -30,13 +30,16 @@
         AUTO_REFETCH_DATA_ON_ERROR_DELAY: 1500,
         
         // Image Configuration
-        IMAGE_MAX_WIDTH: 50, // Maximum width in pixels (set to null for no limit)
-        IMAGE_MAX_HEIGHT: null, // Maximum height in pixels (set to null for no limit)
-        IMAGE_MAINTAIN_ASPECT_RATIO: true, // true = maintain proportions, false = stretch to fit
+        IMAGE_THUMB_MAX_WIDTH: 50, // Maximum width in pixels for thumbnails (set to null for no limit)
+        IMAGE_THUMB_MAX_HEIGHT: null, // Maximum height in pixels for thumbnails (set to null for no limit)
+        IMAGE_ANSWER_MAX_WIDTH: 555, // Maximum width in pixels for answer images (set to null for no limit)
+        IMAGE_ANSWER_MAX_HEIGHT: null, // Maximum height in pixels for answer images (set to null for no limit)
+        IMAGE_ANSWER_ALIGN: 'center', // Options: 'left', 'center', 'right'. Only applies when image is inside an answer cell.
         
         // Video Configuration
         YOUTUBE_EMBED_WIDTH: 560,
         YOUTUBE_EMBED_HEIGHT: 315,
+        YOUTUBE_EMBED_ALIGN: 'right', // Options: 'left', 'center', 'right'. Only applies when video is inside an answer cell.
         
         // Column Configuration
         COLUMN_WIDTHS: ['','','',''], // Width in pixels for each column (empty string = auto width)
