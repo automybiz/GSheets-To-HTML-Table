@@ -25,7 +25,7 @@
         --accordion-spacing: 0px;
         --border-radius: 8px;
         --question-padding-horizontal: 11px; /* 11px does pretty well by default */
-        --question-padding-vertical: 6px; /* 6px does pretty well by default */
+        --question-padding-vertical: 6px;    /* 6px does pretty well by default */
         --answer-padding-left: 22px;
         --answer-padding-right: 22px;
         --answer-padding-top: 11px;

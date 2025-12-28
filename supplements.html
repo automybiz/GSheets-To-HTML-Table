@@ -4,15 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GSheets To HTML Table - Supplements</title>
-    <link rel="stylesheet" href="Google Sheets Data To HTML Table v1.00 root.css">
+    <link rel="stylesheet" href="GSheets-To-HTML-Table-v1.00-root.css">
     <style>
         /* Overrides */
         :root {
-            --question-padding-horizontal: 0px; /* 11px does pretty well by default */
-            --question-padding-vertical: 0px; /* 6px does pretty well by default */
+            --question-padding-horizontal: 0px; /* No padding needed since thumbnail column is being used */
+            --question-padding-vertical: 0px;   /* No padding wanted around the thumbnails */
         }
     </style>
-    <link rel="stylesheet" href="Google Sheets Data To HTML Table v1.00 rules.css">
+    <link rel="stylesheet" href="GSheets-To-HTML-Table-v1.00-rules.css">
     <style>
         body {
             background-color: #000;
@@ -20,6 +20,7 @@
     </style>
 </head>
 <body>
+
     <div class="accordion-wrapper"></div>
 
 <script>
@@ -88,6 +89,6 @@
         ] 
     };
     </script>
-    <script src="Google Sheets Data To HTML Table v1.00.js"></script>
+    <script src="GSheets-To-HTML-Table-v1.00.js"></script>
 </body>
 </html>
