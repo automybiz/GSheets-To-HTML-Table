@@ -1,0 +1,35 @@
+name: Deploy Versioned JS to GitHub Pages
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # Add build steps here if needed, e.g.:
+      # - run: npm install && npm run build  # If you have a build process
+
+      - name: Deploy to version folder
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .  # CHANGE THIS to your file's folder, e.g., dist or src
+          destination_dir: ${{ github.event.release.tag_name }}  # e.g., v1.00
+          keep_files: true  # Important: preserves old version folders
+          force_orphan: true
+          commit_message: Deploy ${{ github.event.release.tag_name }}
+
+      - name: Deploy to latest alias
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .  # Same as above
+          destination_dir: latest
+          keep_files: false  # Overwrites latest fully
+          commit_message: Update latest to ${{ github.event.release.tag_name }}
