@@ -32,6 +32,7 @@
         AUTO_REFETCH_DATA_ON_ERROR_DELAY: 1500,
         
         // Image Configuration
+        // Note: Thumbnails referres to images shown in question rows
         IMAGE_THUMB_MAX_WIDTH: 50, // Maximum width in pixels for thumbnails (set to null for no limit)
         IMAGE_THUMB_MAX_HEIGHT: null, // Maximum height in pixels for thumbnails (set to null for no limit)
         IMAGE_ANSWER_MAX_WIDTH: 555, // Maximum width in pixels for answer images (set to null for no limit)
@@ -44,14 +45,16 @@
         YOUTUBE_EMBED_ALIGN: 'right', // Options: 'left', 'center', 'right'. Only applies when video is inside an answer cell.
         
         // Column Configuration
-        COLUMN_WIDTHS: ['','','',''], // Width in pixels for each column (empty string = auto width)
+        COLUMN_WIDTHS: ['50','','',''], // Width in pixels for each column (empty string = auto width). Doesn't apply to auto-number column AUTO_NUMBER_COLUMN.
         HEADER_ROW_COLUMNS_ALIGN: ['center','center','center','center'],
         QUESTION_COLUMNS_ALIGN: ['left','left','center','center'],
-        QUESTION_COLUMNS: ['B'],
-        ANSWER_COLUMN: 'C',
-        URL_COLUMNS: [''],
-        SHOW_HIDE_ICON: '›',
-        
+        QUESTION_COLUMNS: ['SHOW','B'], // Define which columns contain the questions. Also include a column titled "SHOW" to enable column that holds the SHOW_HIDE_ICON which shows whether the answer row is shown or hidden.
+        ANSWER_COLUMN: 'C', // Define which column contains the answers or leave blank to disable answers
+        URL_COLUMNS: [''], // Define GSheets columns containing URLs map to the corrosponding question columns (e.g., if QUESTION_COLUMNS is ['B','D'], and you want to map B to a column that only stores URLs like C, set URL_COLUMNS to ['C']). Note: B is first in the QUESTION_COLUMNS array, so C is first in the URL_COLUMNS array.
+        SHOW_HIDE_ICON_SVG: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="m5.25 4.5 7.5 7.5-7.5 7.5m6-15 7.5 7.5-7.5 7.5" /></svg>', // SVG tag for the show/hide icon. You can copy SVG code from sites like heroicons.com
+        SHOW_HIDE_DIRECTION_SHOWN: 'down', // Options: 'down', 'up', 'left', 'right' (direction of the icon when answer is shown)
+        SHOW_HIDE_DIRECTION_HIDDEN: 'right', // Options: 'down', 'up', 'left', 'right' (direction of the icon when answer is hidden)
+
         // Search Configuration
         SEARCH_SCOPE: 'single', // Options: 'single' (search only this table) or 'all' (search all tables on page)
         SHOW_SEARCH_BOX: true, // Set to false to hide search box for this instance
@@ -61,7 +64,7 @@
         SEARCH_PLACEHOLDER_ANIMATION_LOOP_DELAY: 2222, // Delay in milliseconds before the placeholder animation loops
         
         // Display Configuration
-        AUTO_NUMBER_ROWS: 1, // Starting number for auto-numbering rows (set to null to disable)
+        AUTO_NUMBER_COLUMN: 1, // Starting number for auto-numbering rows (set to null to disable)
         AUTO_NUMBER_COLUMN_WIDTH: 50, // Width in pixels for auto-number column (default: 50)
         QUESTION_PREFIX: '<u><b>Question:</b></u>&nbsp;', // HTML/text prefix for first question column (empty string to disable)
         ANSWER_PREFIX: '<u><b>Answer:</b></u><br>', // HTML/text to show before answer content (empty string to disable)

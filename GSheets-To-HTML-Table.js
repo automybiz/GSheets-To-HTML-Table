@@ -76,6 +76,7 @@
     // UTILITY FUNCTIONS
     // ============================================
     function columnLetterToIndex(letter) {
+        if (letter === 'SHOW') return 'SHOW';
         return letter.toUpperCase().charCodeAt(0) - 65;
     }
     
@@ -770,7 +771,10 @@
             visibleItems.forEach((item, index) => {
                 const questionRow = item.querySelector('.accordion-question-row');
                 if (questionRow) {
-                    questionRow.classList.remove('odd-row', 'even-row'); // Remove existing classes
+                    questionRow.classList.remove('odd-row', 'even-row', 'first-visible-row'); // Remove existing classes
+                    if (index === 0) {
+                        questionRow.classList.add('first-visible-row');
+                    }
                     if (index % 2 === 0) {
                         questionRow.classList.add('even-row');
                     } else {
@@ -1102,7 +1106,7 @@
         const questionColumnIndices = getQuestionColumnIndices();
         const answerColumnIndex = getAnswerColumnIndex();
         const urlColumnIndices = getUrlColumnIndices();
-        const hasAutoNumbering = CONFIG.AUTO_NUMBER_ROWS !== null;
+        const hasAutoNumbering = CONFIG.AUTO_NUMBER_COLUMN !== null;
         const numColumns = questionColumnIndices.length + (hasAutoNumbering ? 1 : 0);
         
         // Get transition settings (convert milliseconds to seconds)
@@ -1136,7 +1140,7 @@
         let html = '<div class="accordion-container"><table class="accordion-table">';
         
         isFirstDataRow = true;
-        let rowNumber = CONFIG.AUTO_NUMBER_ROWS;
+        let rowNumber = CONFIG.AUTO_NUMBER_COLUMN;
         
         console.log(`[Accordion] About to process ${data.length} rows in displayAccordion`);
         data.forEach((row, index) => {
@@ -1169,35 +1173,62 @@
                     html += `<td align="center" class="accordion-auto-number-cell" style="width: ${autoNumberWidth}px; max-width: ${autoNumberWidth}px;">${rowNumber}</td>`;
                 }
                 
-				questionColumnIndices.forEach((colIndex, i) => {
-					const cellValue = row[colIndex] || '';
-					
-					// Check if cell contains an image URL first
-					const directImageUrl = isDirectImageURL(cellValue);
+                questionColumnIndices.forEach((colIndex, i) => {
+                    // Check if this is the special SHOW_HIDE_ICON column
+                    if (colIndex === 'SHOW') {
+                        const alignment = alignmentToUse[i] || 'center';
+                        const columnWidth = CONFIG.COLUMN_WIDTHS && CONFIG.COLUMN_WIDTHS[i] ? CONFIG.COLUMN_WIDTHS[i] : '';
+                        const widthStyle = columnWidth ? ` width: ${columnWidth}px; max-width: ${columnWidth}px;` : '';
+                        
+                        // Icon wrapper with initial rotation
+                        const iconHiddenDir = (CONFIG.SHOW_HIDE_DIRECTION_HIDDEN || 'right').toLowerCase();
+                        const iconShownDir = (CONFIG.SHOW_HIDE_DIRECTION_SHOWN || 'down').toLowerCase();
+                        
+                        // Use SVG from config or fallback to a default chevron
+                        let iconContent = CONFIG.SHOW_HIDE_ICON_SVG;
+                        
+                        // Fallback SVG if config variable is missing or empty
+                        if (!iconContent) {
+                            // This SVG is a centered chevron pointing right by default (0 degrees)
+                            iconContent = `<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
+                        }
 
-					// Add question prefix to first question column only (but not for header rows or image thumbnails)
-					const questionPrefix = (i === 0 && CONFIG.QUESTION_PREFIX && !isHeaderRow && !forceDisplay && !directImageUrl) ? CONFIG.QUESTION_PREFIX : '';
+                        html += `<td align="${alignment}" class="accordion-toggle-cell" style="${widthStyle}" data-hidden-dir="${iconHiddenDir}" data-shown-dir="${iconShownDir}">
+                                    <div class="accordion-toggle-container">
+                                        <span class="accordion-toggle-icon">${iconContent}</span>
+                                    </div>
+                                 </td>`;
+                        return;
+                    }
 
-					// Optional URL for this question column (from CONFIG.URL_COLUMNS)
-					let linkedValue = '';
-					const urlColIndex = urlColumnIndices[i];
-					const rawUrl = (typeof urlColIndex === 'number') ? (row[urlColIndex] || '').toString().trim() : '';
-					const hasUrl = rawUrl && /^https?:\/\//i.test(rawUrl);
-					
-					if (directImageUrl && hasUrl) {
-						// Cell has image URL AND a link URL - wrap image in link
-						const imageTag = generateImageTag(directImageUrl, true);
-						linkedValue = `<a href="${rawUrl}" target="_blank">${imageTag}</a>`;
-					} else if (hasUrl) {
-						// Cell has link URL but no image - wrap text in link
-						let questionHtml = preserveWhitespace(cellValue);
-						questionHtml = convertNewlinesToBR(questionHtml);
-						linkedValue = `<a href="${rawUrl}" target="_blank">${questionPrefix}${questionHtml}</a>`;
-					} else {
-						// No link URL - use existing URL/image detection. No lazy loading for question cells.
-						const processedValue = convertURLsToLinks(cellValue, true, false);
-						linkedValue = questionPrefix + processedValue;
-					}
+                    const cellValue = row[colIndex] || '';
+                    
+                    // Check if cell contains an image URL first
+                    const directImageUrl = isDirectImageURL(cellValue);
+
+                    // Add question prefix to first question column only (but not for header rows or image thumbnails)
+                    const questionPrefix = (i === 0 && CONFIG.QUESTION_PREFIX && !isHeaderRow && !forceDisplay && !directImageUrl) ? CONFIG.QUESTION_PREFIX : '';
+
+                    // Optional URL for this question column (from CONFIG.URL_COLUMNS)
+                    let linkedValue = '';
+                    const urlColIndex = urlColumnIndices[i];
+                    const rawUrl = (typeof urlColIndex === 'number') ? (row[urlColIndex] || '').toString().trim() : '';
+                    const hasUrl = rawUrl && /^https?:\/\//i.test(rawUrl);
+                    
+                    if (directImageUrl && hasUrl) {
+                        // Cell has image URL AND a link URL - wrap image in link
+                        const imageTag = generateImageTag(directImageUrl, true);
+                        linkedValue = `<a href="${rawUrl}" target="_blank">${imageTag}</a>`;
+                    } else if (hasUrl) {
+                        // Cell has link URL but no image - wrap text in link
+                        let questionHtml = preserveWhitespace(cellValue);
+                        questionHtml = convertNewlinesToBR(questionHtml);
+                        linkedValue = `<a href="${rawUrl}" target="_blank">${questionPrefix}${questionHtml}</a>`;
+                    } else {
+                        // No link URL - use existing URL/image detection. No lazy loading for question cells.
+                        const processedValue = convertURLsToLinks(cellValue, true, false);
+                        linkedValue = questionPrefix + processedValue;
+                    }
 
                     const alignment = alignmentToUse[i] || 'left';
                     
@@ -1213,36 +1244,36 @@
                 });
                 html += '</tr>';
                 
-				if (answer) {
-					const answerPrefix = CONFIG.ANSWER_PREFIX || '';
-					const processedAnswer = convertURLsToLinks(answer, false, true);
-					
-					// Get enlarged thumbnail if enabled
-					let enlargedThumbnail = '';
-					if (CONFIG.SHOW_ENLARGED_THUMBNAIL_IN_ANSWER_ROW) {
-						// Find the leftmost column with an image
-						for (let i = 0; i < questionColumnIndices.length; i++) {
-							const colIndex = questionColumnIndices[i];
-							const cellValue = row[colIndex] || '';
-							const imageUrl = isDirectImageURL(cellValue);
-							
-							if (imageUrl) {
-								enlargedThumbnail = `<div class="accordion-answer-thumbnail"><img src="${imageUrl}" alt="Enlarged thumbnail" loading="lazy"></div>`;
-								break; // Use only the first (leftmost) image found
-							}
-						}
-					}
-					
-					html += `
-						<tr class="accordion-answer-row">
-							<td colspan="${numColumns}" class="accordion-answer-cell">
-								<div class="accordion-answer-wrapper">
-									<div class="accordion-answer-content">${enlargedThumbnail}${answerPrefix}${processedAnswer}</div>
-								</div>
-							</td>
-						</tr>
-					`;
-				}
+                if (answer) {
+                    const answerPrefix = CONFIG.ANSWER_PREFIX || '';
+                    const processedAnswer = convertURLsToLinks(answer, false, true);
+                    
+                    // Get enlarged thumbnail if enabled
+                    let enlargedThumbnail = '';
+                    if (CONFIG.SHOW_ENLARGED_THUMBNAIL_IN_ANSWER_ROW) {
+                        // Find the leftmost column with an image
+                        for (let i = 0; i < questionColumnIndices.length; i++) {
+                            const colIndex = questionColumnIndices[i];
+                            const cellValue = row[colIndex] || '';
+                            const imageUrl = isDirectImageURL(cellValue);
+                            
+                            if (imageUrl) {
+                                enlargedThumbnail = `<div class="accordion-answer-thumbnail"><img src="${imageUrl}" alt="Enlarged thumbnail" loading="lazy"></div>`;
+                                break; // Use only the first (leftmost) image found
+                            }
+                        }
+                    }
+                    
+                    html += `
+                        <tr class="accordion-answer-row">
+                            <td colspan="${numColumns}" class="accordion-answer-cell">
+                                <div class="accordion-answer-wrapper">
+                                    <div class="accordion-answer-content">${enlargedThumbnail}${answerPrefix}${processedAnswer}</div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
                 
                 html += '</tbody>';
                 isFirstDataRow = false;

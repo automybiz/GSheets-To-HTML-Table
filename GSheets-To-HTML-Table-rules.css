@@ -122,6 +122,12 @@
     .accordion-question-row td {
         padding: var(--question-padding-vertical) var(--question-padding-horizontal);
         border: 1px solid var(--question-border-color);
+        border-top: none; /* Prevent double borders between rows */
+    }
+
+    /* Restore top border for the first visible item */
+    .accordion-question-row.first-visible-row td {
+        border-top: 1px solid var(--question-border-color);
     }
 
     /* Ensure thumbnail cells have no padding */
@@ -157,6 +163,55 @@
         display: block;
         margin: 0 auto;
     }
+
+    /* Toggle Icon Rotation */
+    .accordion-toggle-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.3s ease;
+        /* Size control for both SVG and text icons */
+        width: var(--show-hide-icon-size);
+        height: var(--show-hide-icon-size);
+        font-size: var(--show-hide-icon-size) !important;
+        color: var(--show-hide-icon-color) !important; /* Apply custom color */
+        line-height: 1;
+        transform-origin: center center;
+    }
+    
+    /* Ensure SVG icons scale correctly */
+    .accordion-toggle-icon svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+    }
+
+    /* Center toggle icon in cell */
+    .accordion-toggle-cell {
+        text-align: center;
+        vertical-align: middle;
+        padding: 0 !important; /* Reset padding for perfect centering */
+    }
+
+    .accordion-toggle-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Hidden Directions (Default state) */
+    .accordion-toggle-cell[data-hidden-dir="up"] .accordion-toggle-icon { transform: rotate(-90deg); }
+    .accordion-toggle-cell[data-hidden-dir="down"] .accordion-toggle-icon { transform: rotate(90deg); }
+    .accordion-toggle-cell[data-hidden-dir="left"] .accordion-toggle-icon { transform: rotate(180deg); }
+    .accordion-toggle-cell[data-hidden-dir="right"] .accordion-toggle-icon { transform: rotate(0deg); }
+
+    /* Shown Directions (When parent .accordion-item is .active) */
+    .accordion-item.active .accordion-toggle-cell[data-shown-dir="up"] .accordion-toggle-icon { transform: rotate(-90deg); }
+    .accordion-item.active .accordion-toggle-cell[data-shown-dir="down"] .accordion-toggle-icon { transform: rotate(90deg); }
+    .accordion-item.active .accordion-toggle-cell[data-shown-dir="left"] .accordion-toggle-icon { transform: rotate(180deg); }
+    .accordion-item.active .accordion-toggle-cell[data-shown-dir="right"] .accordion-toggle-icon { transform: rotate(0deg); }
     
     /* Ensure thumbnails fill the cell without extra space */
     .accordion-image-cell .accordion-image-content {
@@ -167,12 +222,12 @@
     }
     
     /* First item top-left corner */
-    .accordion-item:first-child .accordion-question-row td:first-child {
+    .accordion-question-row.first-visible-row td:first-child {
         border-top-left-radius: var(--border-radius);
     }
     
     /* First item top-right corner */
-    .accordion-item:first-child .accordion-question-row td:last-child {
+    .accordion-question-row.first-visible-row td:last-child {
         border-top-right-radius: var(--border-radius);
     }
     

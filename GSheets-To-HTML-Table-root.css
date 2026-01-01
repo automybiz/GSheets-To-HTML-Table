@@ -31,6 +31,8 @@
         --answer-padding-top: 11px;
         --answer-padding-bottom: 11px;
         --auto-number-column-width: 30px;
+        --show-hide-icon-size: 33px;
+        --show-hide-icon-color: #FFF;
         
         /* Alternating Row Colors */
         --row-even-bg-color: #011;
