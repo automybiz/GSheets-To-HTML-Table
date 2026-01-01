@@ -1173,6 +1173,7 @@
                     html += `<td align="center" class="accordion-auto-number-cell" style="width: ${autoNumberWidth}px; max-width: ${autoNumberWidth}px;">${rowNumber}</td>`;
                 }
                 
+                let prefixApplied = false;
                 questionColumnIndices.forEach((colIndex, i) => {
                     // Check if this is the special SHOW_HIDE_ICON column
                     if (colIndex === 'SHOW') {
@@ -1206,8 +1207,12 @@
                     // Check if cell contains an image URL first
                     const directImageUrl = isDirectImageURL(cellValue);
 
-                    // Add question prefix to first question column only (but not for header rows or image thumbnails)
-                    const questionPrefix = (i === 0 && CONFIG.QUESTION_PREFIX && !isHeaderRow && !forceDisplay && !directImageUrl) ? CONFIG.QUESTION_PREFIX : '';
+                    // Add question prefix to the first non-image question column (but not for header rows or image thumbnails)
+                    let questionPrefix = '';
+                    if (!prefixApplied && CONFIG.QUESTION_PREFIX && !isHeaderRow && !forceDisplay && !directImageUrl) {
+                        questionPrefix = CONFIG.QUESTION_PREFIX;
+                        prefixApplied = true;
+                    }
 
                     // Optional URL for this question column (from CONFIG.URL_COLUMNS)
                     let linkedValue = '';
