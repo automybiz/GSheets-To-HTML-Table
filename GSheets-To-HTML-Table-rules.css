@@ -77,10 +77,14 @@
     }
     
     .accordion-question-row {
-        background-color: var(--question-bg-color);
+        background-color: color-mix(in srgb, var(--question-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-hidden))));
         color: var(--question-font-color);
         cursor: pointer;
         transition: background-color 0.3s ease;
+    }
+
+    .accordion-item.active .accordion-question-row {
+        background-color: color-mix(in srgb, var(--question-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-shown))));
     }
 
     .accordion-question-row a {
@@ -94,20 +98,36 @@
     }
     
     .accordion-item:nth-child(even) .accordion-question-row {
-        background-color: var(--row-even-bg-color);
+        background-color: color-mix(in srgb, var(--row-even-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-hidden))));
+    }
+
+    .accordion-item.active:nth-child(even) .accordion-question-row {
+        background-color: color-mix(in srgb, var(--row-even-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-shown))));
     }
     
-        .accordion-item:nth-child(odd) .accordion-question-row {
-            background-color: var(--row-odd-bg-color);
-        }
+    .accordion-item:nth-child(odd) .accordion-question-row {
+        background-color: color-mix(in srgb, var(--row-odd-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-hidden))));
+    }
+
+    .accordion-item.active:nth-child(odd) .accordion-question-row {
+        background-color: color-mix(in srgb, var(--row-odd-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-shown))));
+    }
     
         /* Explicit row coloring for dynamic updates */
         .accordion-question-row.even-row {
-            background-color: var(--row-even-bg-color) !important;
+            background-color: color-mix(in srgb, var(--row-even-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-hidden)))) !important;
+        }
+
+        .accordion-item.active .accordion-question-row.even-row {
+            background-color: color-mix(in srgb, var(--row-even-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-shown)))) !important;
         }
     
         .accordion-question-row.odd-row {
-            background-color: var(--row-odd-bg-color) !important;
+            background-color: color-mix(in srgb, var(--row-odd-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-hidden)))) !important;
+        }
+
+        .accordion-item.active .accordion-question-row.odd-row {
+            background-color: color-mix(in srgb, var(--row-odd-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-shown)))) !important;
         }
     
     .accordion-question-row.no-answer {
@@ -247,13 +267,13 @@
     }
     
     .accordion-answer-row {
-        background-color: var(--answer-bg-color);
+        background-color: color-mix(in srgb, var(--answer-bg-color), transparent calc(100% * (1 - var(--answer-bg-opacity))));
         color: var(--answer-font-color);
     }
     
     .accordion-answer-cell {
         padding: 0;
-        border: 1px solid var(--answer-border-color);
+        border: 1px solid var(--question-border-color);
         border-top: none;
     }
     
@@ -360,8 +380,7 @@
 		width: 100%;
 		height: auto;
 		display: block;
-		border: 1px solid var(--answer-border-color);
-		border-radius: 8px;
+		border: var(--answer-image-border-size) solid var(--question-border-color);
 		border-radius: 8px;
 	}
     

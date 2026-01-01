@@ -19,8 +19,13 @@
         --answer-font-size: 13px;
         --answer-font-color: #FFF;
         --answer-bg-color: #101;
-        --answer-border-color: #099;
+        --answer-image-border-size: 0px;
         
+        /* Opacity Styling */
+        --question-bg-opacity-when-answer-shown: 0.2;
+        --question-bg-opacity-when-answer-hidden: 0.8;
+        --answer-bg-opacity: 0.8;
+
         /* Layout */
         --accordion-spacing: 0px;
         --border-radius: 8px;
