@@ -308,11 +308,13 @@
         opacity: 1;
     }
     
-    .accordion-answer-content img {
+    .accordion-answer-content img, .accordion-answer-image {
         max-width: 100%;
         height: auto;
         display: block;
         margin: 10px 0px;
+        border: var(--answer-image-border-size) solid var(--answer-image-border-color);
+        border-radius: var(--answer-image-border-radius);
     }
     
     .accordion-video-container {
@@ -320,8 +322,10 @@
         margin: 0px 0px;
     }
 
-    .accordion-answer-content iframe {
-        border: none;
+    .accordion-answer-content iframe, .accordion-answer-video {
+        border: var(--answer-video-border-size) solid var(--answer-video-border-color);
+        border-radius: var(--answer-video-border-radius);
+        display: inline-block;
     }
     
     .accordion-answer-content .lazy-youtube-placeholder {
@@ -332,11 +336,18 @@
     /* ============================================
        LAZY LOADING PLACEHOLDER STYLES
        ============================================ */
-    .lazy-image-placeholder,
+    .lazy-image-placeholder {
+        transition: all 0.3s ease;
+        cursor: pointer;
+        user-select: none;
+        border-radius: var(--answer-image-border-radius) !important;
+    }
+
     .lazy-youtube-placeholder {
         transition: all 0.3s ease;
         cursor: pointer;
         user-select: none;
+        border-radius: var(--answer-video-border-radius) !important;
     }
     
     .lazy-image-placeholder:hover,
@@ -380,8 +391,8 @@
 		width: 100%;
 		height: auto;
 		display: block;
-		border: var(--answer-image-border-size) solid var(--question-border-color);
-		border-radius: 8px;
+		border: var(--answer-image-big-thumb-border-size) solid var(--answer-image-big-thumb-border-color);
+		border-radius: var(--answer-image-big-thumb-border-radius);
 	}
     
     /* Text effect animations */
@@ -513,4 +524,25 @@
         color: var(--answer-font-color);
         font-family: var(--answer-font-family);
         font-size: var(--answer-font-size);
+    }
+
+    /* ============================================
+       DATE HEAT MAP DOTS
+       ============================================ */
+    .date-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-left: 8px;
+        vertical-align: middle;
+        box-shadow: 0 0 2px rgba(0,0,0,0.5);
+        flex-shrink: 0;
+    }
+
+    /* Ensure the cell container can handle the dot alignment */
+    .date-cell-wrapper {
+        display: inline-flex;
+        align-items: center;
+        white-space: nowrap;
     }

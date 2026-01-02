@@ -19,8 +19,20 @@
         --answer-font-size: 13px;
         --answer-font-color: #FFF;
         --answer-bg-color: #101;
-        --answer-image-border-size: 0px;
         
+        /* Answer Media Styling */
+        --answer-image-border-size: 1px;
+        --answer-image-border-color: #0FF;
+        --answer-image-border-radius: 8px;
+        --answer-video-border-size: 1px;
+        --answer-video-border-color: #0FF;
+        --answer-video-border-radius: 8px;
+        
+        /* Answer Media Enlarged Thumbnail Styling */
+        --answer-image-big-thumb-border-size: 0px;
+        --answer-image-big-thumb-border-color: #F00;
+        --answer-image-big-thumb-border-radius: 18px;
+
         /* Opacity Styling */
         --question-bg-opacity-when-answer-shown: 0.2;
         --question-bg-opacity-when-answer-hidden: 0.8;
@@ -60,4 +72,5 @@
         
         --text-no-background-size: 20px;
         --text-no-background-color: #FFF;
+
     }

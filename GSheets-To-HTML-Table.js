@@ -1,4 +1,4 @@
-    (function() {
+(function() {
     
     // Generate unique instance ID
     const INSTANCE_ID = 'accordion_' + Math.random().toString(36).substr(2, 9);
@@ -62,6 +62,7 @@
     let retryTimeout = null;
     let countdownInterval = null;
     let isPaused = false;
+    let dateRange = { min: Infinity, max: -Infinity };
     
     // Animation settings mapping
     const transitionEffects = {
@@ -151,6 +152,49 @@
         
         return false;
     }
+
+    function interpolateColor(color1, color2, factor) {
+        if (arguments.length < 3) factor = 0.5;
+        
+        const parse = (c) => {
+            // Support for CSS color names by using a temporary element
+            const temp = document.createElement('div');
+            temp.style.color = c;
+            document.body.appendChild(temp);
+            const style = window.getComputedStyle(temp).color;
+            document.body.removeChild(temp);
+            
+            const match = style.match(/\d+/g);
+            if (match) {
+                return match.map(Number);
+            }
+            return [0, 0, 0];
+        };
+
+        const c1 = parse(color1);
+        const c2 = parse(color2);
+
+        const r = Math.round(c1[0] + factor * (c2[0] - c1[0]));
+        const g = Math.round(c1[1] + factor * (c2[1] - c1[1]));
+        const b = Math.round(c1[2] + factor * (c2[2] - c1[2]));
+
+        // Convert to shorthand hex by taking the first digit of each 2-digit hex value
+        const rh = r.toString(16).padStart(2, '0')[0];
+        const gh = g.toString(16).padStart(2, '0')[0];
+        const bh = b.toString(16).padStart(2, '0')[0];
+
+        return `#${rh}${gh}${bh}`;
+    }
+
+    function getHeatMapColor(dateStr, minTime, maxTime) {
+        if (!dateStr || minTime === maxTime) return CONFIG.DATE_DOTS_HEAT_MAP.COLOR_MOST_RECENT;
+        
+        const time = new Date(dateStr).getTime();
+        if (isNaN(time)) return null;
+
+        const factor = (time - minTime) / (maxTime - minTime);
+        return interpolateColor(CONFIG.DATE_DOTS_HEAT_MAP.COLOR_LEAST_RECENT, CONFIG.DATE_DOTS_HEAT_MAP.COLOR_MOST_RECENT, factor);
+    }
     
     function generateImageTag(imageUrl, isInCell = false) {
         let styles = [];
@@ -202,7 +246,7 @@
         }
         
         // Add class to identify image cells for padding removal
-        const className = isInCell ? 'class="accordion-image-content"' : '';
+        const className = isInCell ? 'class="accordion-image-content"' : 'class="accordion-answer-image"';
         
         return `<img src="${imageUrl}" ${className} style="${styles.join('; ')}" alt="Image" loading="lazy">`;
     }
@@ -317,13 +361,13 @@
     // ============================================
     function generateLazyImagePlaceholder(imageUrl, isInCell = false) {
         const className = isInCell ? 'class="accordion-image-content lazy-image-placeholder"' : 'class="lazy-image-placeholder"';
-        const placeholderStyle = isInCell ? 'display: block; margin: 0 auto; background: #333; border: 2px dashed #666; border-radius: 4px; text-align: center; color: #999; font-size: 12px; padding: 20px 10px;' : 'background: #333; border: 2px dashed #666; border-radius: 4px; text-align: center; color: #999; font-size: 14px; padding: 40px 20px; margin: 10px 0;';
+        const placeholderStyle = isInCell ? 'display: block; margin: 0 auto; background: #333; border: 2px dashed #666; border-radius: 4px; text-align: center; color: #999; font-size: 12px; padding: 20px 10px;' : 'background: #333; border: 2px dashed #666; border-radius: var(--answer-image-border-radius); text-align: center; color: #999; font-size: 14px; padding: 40px 20px; margin: 10px 0;';
         
         return `<div ${className} data-original-url="${imageUrl}" style="${placeholderStyle}" onclick="window.loadLazyImage(this)">📷 Image (Click to load)</div>`;
     }
     
     function generateLazyYouTubePlaceholder(url, videoId, videoTitle, timeParam, playlistParam) {
-        const placeholderStyle = 'background: #222; border: 2px dashed #666; border-radius: 4px; text-align: center; color: #999; font-size: 14px; padding: 40px 20px; cursor: pointer;';
+        const placeholderStyle = 'background: #222; border: 2px dashed #666; border-radius: var(--answer-video-border-radius); text-align: center; color: #999; font-size: 14px; padding: 40px 20px; cursor: pointer;';
         const videoData = encodeURIComponent(JSON.stringify({ url, videoId, timeParam, playlistParam }));
         
         return `<div class="lazy-youtube-placeholder" data-video-data="${videoData}" style="${placeholderStyle}" onclick="window.loadLazyYouTube(this)">▶️ ${videoTitle} (Click to load)</div>`;
@@ -386,7 +430,7 @@
                 }
             }
             
-            const className = isInCell ? 'class="accordion-image-content"' : '';
+            const className = isInCell ? 'class="accordion-image-content"' : 'class="accordion-answer-image"';
             const finalHtml = `<img src="${imageUrl}" ${className} style="${styles.join('; ')}" alt="Image" loading="lazy">`;
             
             element.outerHTML = finalHtml;
@@ -417,7 +461,7 @@
             iframe.frameBorder = '0';
             iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
             iframe.allowFullscreen = true;
-            iframe.style.border = 'none';
+            iframe.className = 'accordion-answer-video';
             
             element.outerHTML = iframe.outerHTML;
         } catch (error) {
@@ -525,7 +569,7 @@
                 if (videoId) {
                     const videoHtml = lazyMode 
                         ? generateLazyYouTubePlaceholder(url, videoId, videoTitle, timeParam, playlistParam)
-                        : `<iframe width="${CONFIG.YOUTUBE_EMBED_WIDTH}" height="${CONFIG.YOUTUBE_EMBED_HEIGHT}" src="https://www.youtube.com/embed/${videoId}${timeParam}${playlistParam}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+                        : `<iframe width="${CONFIG.YOUTUBE_EMBED_WIDTH}" height="${CONFIG.YOUTUBE_EMBED_HEIGHT}" src="https://www.youtube.com/embed/${videoId}${timeParam}${playlistParam}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="accordion-answer-video"></iframe>`;
                     
                     if (!isInCell) {
                         const align = CONFIG.YOUTUBE_EMBED_ALIGN || 'right';
@@ -1088,6 +1132,42 @@
         }
         
         allData = processedData;
+
+        // Calculate date range if heat map is enabled (supports true or 1)
+        if (CONFIG.DATE_DOTS_HEAT_MAP && (CONFIG.DATE_DOTS_HEAT_MAP.ENABLED === true || CONFIG.DATE_DOTS_HEAT_MAP.ENABLED === 1)) {
+            const dateCols = CONFIG.DATE_DOTS_HEAT_MAP.DATE_COLUMNS.map(col => columnLetterToIndex(col));
+            dateRange = { min: Infinity, max: -Infinity };
+            
+            allData.forEach((row, index) => {
+                // Skip header row in calculation
+                let isHeaderRow = false;
+                if (CONFIG.HEADER_ROW_NUMBER !== 0) {
+                    if (CONFIG.HEADER_ROW_NUMBER < CONFIG.STARTING_ROW) {
+                        isHeaderRow = (index === 0);
+                    } else {
+                        const actualRowNumber = CONFIG.STARTING_ROW + index;
+                        isHeaderRow = (actualRowNumber === CONFIG.HEADER_ROW_NUMBER);
+                    }
+                }
+                if (isHeaderRow) return;
+
+                dateCols.forEach(colIdx => {
+                    const val = row[colIdx];
+                    if (val) {
+                        // Strip HTML
+                        const temp = document.createElement('div');
+                        temp.innerHTML = val;
+                        const text = temp.textContent || temp.innerText || '';
+                        const time = new Date(text).getTime();
+                        if (!isNaN(time)) {
+                            dateRange.min = Math.min(dateRange.min, time);
+                            dateRange.max = Math.max(dateRange.max, time);
+                        }
+                    }
+                });
+            });
+            console.log('[Accordion] Date range calculated:', new Date(dateRange.min), 'to', new Date(dateRange.max));
+        }
     
         // When filtering, we must ALWAYS keep the header row if it exists
         const filteredData = applyFilters(allData, CONFIG.FILTER_CONDITIONS);
@@ -1262,7 +1342,7 @@
                             const iconHiddenDir = (CONFIG.SHOW_HIDE_DIRECTION_HIDDEN || 'right').toLowerCase();
                             const iconShownDir = (CONFIG.SHOW_HIDE_DIRECTION_SHOWN || 'down').toLowerCase();
                             
-                            // Use SVG from config or fallback to a default chevron
+                            // Use SVG from config or fallback to a default banner
                             let iconContent = CONFIG.SHOW_HIDE_ICON_SVG;
                             
                             // Fallback SVG if config variable is missing or empty
@@ -1331,6 +1411,27 @@
                         // No link URL - use existing URL/image detection. No lazy loading for question cells.
                         const processedValue = convertURLsToLinks(cellValue, true, false);
                         linkedValue = (isHeaderRow ? '' : questionPrefix) + processedValue;
+                    }
+
+                    // Date Dot Heat Map logic (supports true or 1)
+                    if (CONFIG.DATE_DOTS_HEAT_MAP && (CONFIG.DATE_DOTS_HEAT_MAP.ENABLED === true || CONFIG.DATE_DOTS_HEAT_MAP.ENABLED === 1) && !isHeaderRow) {
+                        const columnLetter = CONFIG.QUESTION_COLUMNS[i];
+                        if (CONFIG.DATE_DOTS_HEAT_MAP.DATE_COLUMNS.includes(columnLetter)) {
+                            // Strip HTML to get raw date text
+                            const temp = document.createElement('div');
+                            temp.innerHTML = cellValue;
+                            const text = temp.textContent || temp.innerText || '';
+                            const dotColor = getHeatMapColor(text, dateRange.min, dateRange.max);
+                            if (dotColor) {
+                                // Capitalize first letter of color names for title
+                                const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+                                const colorLeast = cap(CONFIG.DATE_DOTS_HEAT_MAP.COLOR_LEAST_RECENT);
+                                const colorMost = cap(CONFIG.DATE_DOTS_HEAT_MAP.COLOR_MOST_RECENT);
+                                const title = `Least Recent Dots = ${colorLeast}&#10;Most Recent Dots = ${colorMost}`;
+                                
+                                linkedValue = `<div class="date-cell-wrapper">${linkedValue}<span class="date-dot" style="background-color: ${dotColor}" title="${title}"></span></div>`;
+                            }
+                        }
                     }
 
                     // Check for Header Cell Suppression
