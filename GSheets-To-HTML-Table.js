@@ -855,15 +855,53 @@
     // DATA FETCHING
     // ============================================
     function applyTextFormatting(cell) {
-        if (!cell || !cell.userEnteredValue) return '';
+        if (!cell) return '';
         
-        const text = cell.userEnteredValue.stringValue || String(cell.userEnteredValue.numberValue || cell.userEnteredValue.boolValue || '');
-        if (!text) return '';
+        const formattedValue = cell.formattedValue || '';
         
-        // If no format runs, return the text as-is
+        // If no format runs, check for cell-level formatting
         if (!cell.textFormatRuns || cell.textFormatRuns.length === 0) {
-            return text;
+            const format = (cell.effectiveFormat && cell.effectiveFormat.textFormat) || {};
+            let style = [];
+
+            // Only apply font size if it's explicitly different from standard spreadsheet defaults (10 or 11pt)
+            // This prevents overriding the --question-font-size defined in CSS for normal text.
+            if (format.fontSize && format.fontSize !== 10 && format.fontSize !== 11) {
+                style.push(`font-size: ${format.fontSize}pt`);
+            }
+            
+            if (format.fontFamily && format.fontFamily !== 'Arial') {
+                loadGoogleFont(format.fontFamily);
+                style.push(`font-family: '${format.fontFamily}'`);
+            }
+            
+            // Only apply foreground color if it's not pure black (0,0,0) 
+            // to avoid clashing with dark themes where black is often the default GSheets color
+            if (format.foregroundColor) {
+                const color = format.foregroundColor;
+                const r = Math.round((color.red || 0) * 255);
+                const g = Math.round((color.green || 0) * 255);
+                const b = Math.round((color.blue || 0) * 255);
+                
+                // Only apply if NOT black AND NOT very dark (to handle various "almost black" defaults)
+                if (r > 30 || g > 30 || b > 30) {
+                    style.push(`color: rgb(${r},${g},${b})`);
+                }
+            }
+            
+            if (format.bold) style.push('font-weight: bold');
+            if (format.italic) style.push('font-style: italic');
+            if (format.underline) style.push('text-decoration: underline');
+            if (format.strikethrough) style.push('text-decoration: line-through');
+
+            if (style.length > 0) {
+                return `<span style="${style.join('; ')}">${formattedValue}</span>`;
+            }
+            return formattedValue;
         }
+
+        const text = cell.userEnteredValue ? (cell.userEnteredValue.stringValue || String(cell.userEnteredValue.numberValue || cell.userEnteredValue.boolValue || '')) : formattedValue;
+        if (!text) return '';
 
         let html = '';
         const runs = cell.textFormatRuns;
@@ -984,8 +1022,8 @@
         console.log('[Accordion] Starting data fetch');
         
         try {
-            // Fetches rich text data
-            const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}?ranges=${CONFIG.RANGE}&includeGridData=true&fields=sheets(data(rowData(values(userEnteredValue%2CtextFormatRuns))))&key=${CONFIG.API_KEY}`;
+            // Fetches rich text, formatted data, and effective formats
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}?ranges=${CONFIG.RANGE}&includeGridData=true&fields=sheets(data(rowData(values(userEnteredValue%2CtextFormatRuns%2CformattedValue%2CeffectiveFormat(textFormat)))))&key=${CONFIG.API_KEY}`;
             const fetchUrl = CONFIG.USE_CORS_PROXY ? `https://cors-anywhere.herokuapp.com/${url}` : url;
             
             const response = await fetch(fetchUrl);
@@ -1028,17 +1066,30 @@
     function processData(values) {
         headers = values[0] || [];
         
-        let actualStartIndex = Math.max(0, CONFIG.STARTING_ROW - 1); // 0-based index from 'values'
-    
-        // If HEADER_ROW_NUMBER is 0 (disabled), and STARTING_ROW is 1,
-        // we assume the user intends to skip the first row (values[0])
-        // as it's implicitly a header that should only be shown if HEADER_ROW_NUMBER is set.
-        if (CONFIG.HEADER_ROW_NUMBER === 0 && CONFIG.STARTING_ROW === 1) {
-            actualStartIndex = 1; // Effectively start data from the second row (values[1])
+        // Calculate where data starts (excluding header row if enabled)
+        let dataStartIndex = Math.max(0, CONFIG.STARTING_ROW - 1);
+        
+        let processedData = [];
+
+        // If HEADER_ROW_NUMBER is enabled (e.g., 1), we must ensure that row is included 
+        // in the values passed to displayAccordion, even if it's before the STARTING_ROW.
+        if (CONFIG.HEADER_ROW_NUMBER > 0 && CONFIG.HEADER_ROW_NUMBER < CONFIG.STARTING_ROW) {
+            const headerRowIndex = CONFIG.HEADER_ROW_NUMBER - 1;
+            const headerRow = values[headerRowIndex];
+            const dataRows = values.slice(dataStartIndex);
+            processedData = [headerRow, ...dataRows];
+        } else {
+            // Standard behavior: start from STARTING_ROW
+            // Special case: skip row 1 if it's an implicit header (HEADER_ROW_NUMBER: 0, STARTING_ROW: 1)
+            if (CONFIG.HEADER_ROW_NUMBER === 0 && CONFIG.STARTING_ROW === 1) {
+                dataStartIndex = 1;
+            }
+            processedData = values.slice(dataStartIndex);
         }
+        
+        allData = processedData;
     
-        allData = values.slice(actualStartIndex);
-    
+        // When filtering, we must ALWAYS keep the header row if it exists
         const filteredData = applyFilters(allData, CONFIG.FILTER_CONDITIONS);
         console.log('[Accordion] Filtered:', filteredData.length, 'rows');
     
@@ -1050,17 +1101,31 @@
         if (filters.length === 0) return data;
     
         return data.filter((row, index) => {
-            // Skip filtering for header row if HEADER_ROW_NUMBER is set
-            if (CONFIG.HEADER_ROW_NUMBER !== 0) { // Changed from !== null to !== 0
-                const actualRowNumber = CONFIG.STARTING_ROW + index;
-                if (actualRowNumber === CONFIG.HEADER_ROW_NUMBER) {
-                    return true; // Always include header row
+            // Always keep the header row if it's enabled
+            if (CONFIG.HEADER_ROW_NUMBER !== 0) {
+                // If we prepended the header (HEADER_ROW < STARTING_ROW), it's always at index 0
+                if (CONFIG.HEADER_ROW_NUMBER < CONFIG.STARTING_ROW) {
+                    if (index === 0) return true;
+                } else {
+                    // Standard calculation
+                    const actualRowNumber = CONFIG.STARTING_ROW + index;
+                    if (actualRowNumber === CONFIG.HEADER_ROW_NUMBER) {
+                        return true;
+                    }
                 }
             }
     
             return filters.every(filter => {
                 const columnIndex = filter.column.charCodeAt(0) - 65;
-                const cellValue = (row[columnIndex] || '').toString().trim();
+                // Strip HTML tags for filtering to handle formatted cells
+                let cellValue = (row[columnIndex] || '').toString();
+                if (cellValue.includes('<')) {
+                    const temp = document.createElement('div');
+                    temp.innerHTML = cellValue;
+                    cellValue = temp.textContent || temp.innerText || '';
+                }
+                cellValue = cellValue.trim();
+                
                 const filterValue = (filter.value || '').toString().trim();
                 
                 switch (filter.condition) {
@@ -1148,13 +1213,20 @@
             const hasQuestionContent = questionColumnIndices.some(colIndex => row[colIndex]);
     
             // Check if this is the header row that should always be displayed
-            const actualRowNumber = CONFIG.STARTING_ROW + index;
-            const isHeaderRow = CONFIG.HEADER_ROW_NUMBER !== 0 && actualRowNumber === CONFIG.HEADER_ROW_NUMBER;
-    
-            // Special handling: if HEADER_ROW_NUMBER is 1 and this is the first row, force display
-            const forceDisplay = CONFIG.HEADER_ROW_NUMBER === 1 && index === 0;
-    
-            if (hasQuestionContent || isHeaderRow || forceDisplay) {
+            // We need to account for the fact that index 0 might be the header row 
+            // if we manually inserted it in processData.
+            let isHeaderRow = false;
+            if (CONFIG.HEADER_ROW_NUMBER !== 0) {
+                // If the header row was prepended, index 0 is always the header
+                if (CONFIG.HEADER_ROW_NUMBER < CONFIG.STARTING_ROW) {
+                    isHeaderRow = (index === 0);
+                } else {
+                    const actualRowNumber = CONFIG.STARTING_ROW + index;
+                    isHeaderRow = (actualRowNumber === CONFIG.HEADER_ROW_NUMBER);
+                }
+            }
+
+            if (hasQuestionContent || isHeaderRow) {
                 // Use header row alignment only if HEADER_ROW_NUMBER is explicitly set and this is that row
                 const alignmentToUse = (CONFIG.HEADER_ROW_NUMBER !== 0 && isHeaderRow) ? CONFIG.HEADER_ROW_COLUMNS_ALIGN : CONFIG.QUESTION_COLUMNS_ALIGN;
                 
@@ -1170,7 +1242,9 @@
                 // Add auto-numbering column if enabled (FIRST - leftmost column)
                 if (hasAutoNumbering) {
                     const autoNumberWidth = CONFIG.AUTO_NUMBER_COLUMN_WIDTH || 50;
-                    html += `<td align="center" class="accordion-auto-number-cell" style="width: ${autoNumberWidth}px; max-width: ${autoNumberWidth}px;">${rowNumber}</td>`;
+                    // If header row, show blank cell. Otherwise show row number.
+                    const cellContent = isHeaderRow ? '' : rowNumber;
+                    html += `<td align="center" class="accordion-auto-number-cell" style="width: ${autoNumberWidth}px; max-width: ${autoNumberWidth}px;">${cellContent}</td>`;
                 }
                 
                 let prefixApplied = false;
@@ -1181,35 +1255,60 @@
                         const columnWidth = CONFIG.COLUMN_WIDTHS && CONFIG.COLUMN_WIDTHS[i] ? CONFIG.COLUMN_WIDTHS[i] : '';
                         const widthStyle = columnWidth ? ` width: ${columnWidth}px; max-width: ${columnWidth}px;` : '';
                         
-                        // Icon wrapper with initial rotation
-                        const iconHiddenDir = (CONFIG.SHOW_HIDE_DIRECTION_HIDDEN || 'right').toLowerCase();
-                        const iconShownDir = (CONFIG.SHOW_HIDE_DIRECTION_SHOWN || 'down').toLowerCase();
-                        
-                        // Use SVG from config or fallback to a default chevron
-                        let iconContent = CONFIG.SHOW_HIDE_ICON_SVG;
-                        
-                        // Fallback SVG if config variable is missing or empty
-                        if (!iconContent) {
-                            // This SVG is a centered chevron pointing right by default (0 degrees)
-                            iconContent = `<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
+                        // Only show icon if there is an answer AND it's not the header row
+                        let iconHtml = '';
+                        if (answer && !isHeaderRow) {
+                            // Icon wrapper with initial rotation
+                            const iconHiddenDir = (CONFIG.SHOW_HIDE_DIRECTION_HIDDEN || 'right').toLowerCase();
+                            const iconShownDir = (CONFIG.SHOW_HIDE_DIRECTION_SHOWN || 'down').toLowerCase();
+                            
+                            // Use SVG from config or fallback to a default chevron
+                            let iconContent = CONFIG.SHOW_HIDE_ICON_SVG;
+                            
+                            // Fallback SVG if config variable is missing or empty
+                            if (!iconContent) {
+                                // This SVG is a centered chevron pointing right by default (0 degrees)
+                                iconContent = `<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
+                            }
+                            
+                            iconHtml = `<div class="accordion-toggle-container">
+                                            <span class="accordion-toggle-icon">${iconContent}</span>
+                                        </div>`;
+                        } else {
+                            // Empty cell for alignment, but attach data attributes just in case styles depend on them
+                            const iconHiddenDir = (CONFIG.SHOW_HIDE_DIRECTION_HIDDEN || 'right').toLowerCase();
+                            const iconShownDir = (CONFIG.SHOW_HIDE_DIRECTION_SHOWN || 'down').toLowerCase();
+                            iconHtml = `<div class="accordion-toggle-container" style="visibility: hidden;"></div>`; 
                         }
 
+                        // We still need the data-attributes on the cell for the toggle logic to not break, 
+                        // even if invisible
+                        const iconHiddenDir = (CONFIG.SHOW_HIDE_DIRECTION_HIDDEN || 'right').toLowerCase();
+                        const iconShownDir = (CONFIG.SHOW_HIDE_DIRECTION_SHOWN || 'down').toLowerCase();
+
                         html += `<td align="${alignment}" class="accordion-toggle-cell" style="${widthStyle}" data-hidden-dir="${iconHiddenDir}" data-shown-dir="${iconShownDir}">
-                                    <div class="accordion-toggle-container">
-                                        <span class="accordion-toggle-icon">${iconContent}</span>
-                                    </div>
+                                    ${iconHtml}
                                  </td>`;
                         return;
                     }
 
-                    const cellValue = row[colIndex] || '';
+                    let cellValue = row[colIndex] || '';
                     
+                    // Strip HTML tags for prefix detection to handle formatted cells
+                    let cleanCellValue = cellValue.toString();
+                    if (cleanCellValue.includes('<')) {
+                        const temp = document.createElement('div');
+                        temp.innerHTML = cleanCellValue;
+                        cleanCellValue = temp.textContent || temp.innerText || '';
+                    }
+                    cleanCellValue = cleanCellValue.trim();
+
                     // Check if cell contains an image URL first
-                    const directImageUrl = isDirectImageURL(cellValue);
+                    const directImageUrl = isDirectImageURL(cleanCellValue);
 
                     // Add question prefix to the first non-image question column (but not for header rows or image thumbnails)
                     let questionPrefix = '';
-                    if (!prefixApplied && CONFIG.QUESTION_PREFIX && !isHeaderRow && !forceDisplay && !directImageUrl) {
+                    if (!prefixApplied && CONFIG.QUESTION_PREFIX && !isHeaderRow && !directImageUrl) {
                         questionPrefix = CONFIG.QUESTION_PREFIX;
                         prefixApplied = true;
                     }
@@ -1226,13 +1325,20 @@
                         linkedValue = `<a href="${rawUrl}" target="_blank">${imageTag}</a>`;
                     } else if (hasUrl) {
                         // Cell has link URL but no image - wrap text in link
-                        let questionHtml = preserveWhitespace(cellValue);
-                        questionHtml = convertNewlinesToBR(questionHtml);
-                        linkedValue = `<a href="${rawUrl}" target="_blank">${questionPrefix}${questionHtml}</a>`;
+                        const processedValue = convertURLsToLinks(cellValue, true, false);
+                        linkedValue = (isHeaderRow ? '' : questionPrefix) + `<a href="${rawUrl}" target="_blank">${processedValue}</a>`;
                     } else {
                         // No link URL - use existing URL/image detection. No lazy loading for question cells.
                         const processedValue = convertURLsToLinks(cellValue, true, false);
-                        linkedValue = questionPrefix + processedValue;
+                        linkedValue = (isHeaderRow ? '' : questionPrefix) + processedValue;
+                    }
+
+                    // Check for Header Cell Suppression
+                    if (isHeaderRow && CONFIG.HEADER_CELL_SUPRESSION && Array.isArray(CONFIG.HEADER_CELL_SUPRESSION)) {
+                        const colID = CONFIG.QUESTION_COLUMNS[i];
+                        if (CONFIG.HEADER_CELL_SUPRESSION.includes(colID)) {
+                            linkedValue = ''; // Suppress text
+                        }
                     }
 
                     const alignment = alignmentToUse[i] || 'left';
@@ -1243,9 +1349,23 @@
                     
                     // Get column width (use array index directly, no offset for auto-numbering)
                     const columnWidth = CONFIG.COLUMN_WIDTHS && CONFIG.COLUMN_WIDTHS[i] ? CONFIG.COLUMN_WIDTHS[i] : '';
-                    const widthStyle = columnWidth ? ` style="width: ${columnWidth}px; max-width: ${columnWidth}px;"` : '';
+                    let styleParts = [];
+                    if (columnWidth) {
+                        styleParts.push(`width: ${columnWidth}px`);
+                        styleParts.push(`max-width: ${columnWidth}px`);
+                    }
                     
-                    html += `<td align="${alignment}" class="${cellClass}"${widthStyle}>${linkedValue}</td>`;
+                    // Match header row styling to question rows
+                    if (isHeaderRow) {
+                        styleParts.push('padding-top: 10px');
+                        styleParts.push('padding-bottom: 10px');
+                        styleParts.push('font-size: var(--question-font-size)');
+                        styleParts.push('color: var(--question-font-color)');
+                    }
+
+                    const styleAttribute = styleParts.length > 0 ? ` style="${styleParts.join('; ')}"` : '';
+                    
+                    html += `<td align="${alignment}" class="${cellClass}"${styleAttribute}>${linkedValue}</td>`;
                 });
                 html += '</tr>';
                 
@@ -1260,7 +1380,17 @@
                         for (let i = 0; i < questionColumnIndices.length; i++) {
                             const colIndex = questionColumnIndices[i];
                             const cellValue = row[colIndex] || '';
-                            const imageUrl = isDirectImageURL(cellValue);
+                            
+                            // Strip HTML tags for image detection to handle formatted cells
+                            let cleanCellValue = cellValue.toString();
+                            if (cleanCellValue.includes('<')) {
+                                const temp = document.createElement('div');
+                                temp.innerHTML = cleanCellValue;
+                                cleanCellValue = temp.textContent || temp.innerText || '';
+                            }
+                            cleanCellValue = cleanCellValue.trim();
+
+                            const imageUrl = isDirectImageURL(cleanCellValue);
                             
                             if (imageUrl) {
                                 enlargedThumbnail = `<div class="accordion-answer-thumbnail"><img src="${imageUrl}" alt="Enlarged thumbnail" loading="lazy"></div>`;
@@ -1282,7 +1412,11 @@
                 
                 html += '</tbody>';
                 isFirstDataRow = false;
-                rowNumber++;
+                
+                // Only increment row number if this wasn't a header row
+                if (!isHeaderRow) {
+                    rowNumber++;
+                }
             }
         });
         
