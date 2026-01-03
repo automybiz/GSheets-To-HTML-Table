@@ -1396,21 +1396,30 @@
                     // Optional URL for this question column (from CONFIG.URL_COLUMNS)
                     let linkedValue = '';
                     const urlColIndex = urlColumnIndices[i];
-                    const rawUrl = (typeof urlColIndex === 'number') ? (row[urlColIndex] || '').toString().trim() : '';
-                    const hasUrl = rawUrl && /^https?:\/\//i.test(rawUrl);
+                    const rawUrl = (urlColIndex !== undefined && urlColIndex !== 'SHOW' && typeof urlColIndex === 'number') ? (row[urlColIndex] || '').toString() : '';
+                    
+                    // Strip HTML from rawUrl in case it's a formatted cell
+                    let cleanUrl = rawUrl;
+                    if (cleanUrl.includes('<')) {
+                        const temp = document.createElement('div');
+                        temp.innerHTML = cleanUrl;
+                        cleanUrl = temp.textContent || temp.innerText || '';
+                    }
+                    cleanUrl = cleanUrl.trim();
+                    const hasUrl = cleanUrl && /^https?:\/\//i.test(cleanUrl);
                     
                     if (directImageUrl && hasUrl) {
                         // Cell has image URL AND a link URL - wrap image in link
                         const imageTag = generateImageTag(directImageUrl, true);
-                        linkedValue = `<a href="${rawUrl}" target="_blank">${imageTag}</a>`;
+                        linkedValue = (isHeaderRow ? "" : questionPrefix) + `<a href="${cleanUrl}" target="_blank">${imageTag}</a>`;
                     } else if (hasUrl) {
                         // Cell has link URL but no image - wrap text in link
                         const processedValue = convertURLsToLinks(cellValue, true, false);
-                        linkedValue = (isHeaderRow ? '' : questionPrefix) + `<a href="${rawUrl}" target="_blank">${processedValue}</a>`;
+                        linkedValue = (isHeaderRow ? "" : questionPrefix) + `<a href="${cleanUrl}" target="_blank">${processedValue}</a>`;
                     } else {
                         // No link URL - use existing URL/image detection. No lazy loading for question cells.
                         const processedValue = convertURLsToLinks(cellValue, true, false);
-                        linkedValue = (isHeaderRow ? '' : questionPrefix) + processedValue;
+                        linkedValue = (isHeaderRow ? "" : questionPrefix) + processedValue;
                     }
 
                     // Date Dot Heat Map logic (supports true or 1)

@@ -90,8 +90,12 @@
     .accordion-question-row a {
         color: var(--question-link-color);
         text-decoration: underline;
-        display: block; /* make the whole cell clickable */
+        display: inline-block;
+        vertical-align: middle;
     }
+>>>>+++ REPLACE
+
+
 
     .accordion-question-row a:visited {
         color: var(--question-link-color);
