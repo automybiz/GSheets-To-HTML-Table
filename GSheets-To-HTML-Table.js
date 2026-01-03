@@ -137,17 +137,20 @@
         
         const trimmedText = text.trim();
         
-        // Check if the entire cell content is just a URL (no other text)
-        const urlOnlyPattern = /^(https?:\/\/[^\s]+)$/;
-        const match = trimmedText.match(urlOnlyPattern);
-        
-        if (match) {
-            const url = match[1];
-            // Check if starts with http and ends with image extension
-            if ((url.startsWith('http://') || url.startsWith('https://')) && isImageURL(url)) {
-                console.log('[Accordion] Direct image URL detected:', url);
-                return url;
-            }
+        // Split by newlines and filter out empty lines
+        const lines = trimmedText.split(/\r?\n/).map(line => line.trim()).filter(line => line !== '');
+        if (lines.length === 0) return false;
+
+        // Check if every non-empty line is an image URL
+        const allAreImages = lines.every(line => {
+            const urlOnlyPattern = /^(https?:\/\/[^\s]+)$/;
+            const match = line.match(urlOnlyPattern);
+            return match && isImageURL(match[1]);
+        });
+
+        if (allAreImages) {
+            console.log('[Accordion] Direct image URL(s) detected');
+            return lines; // Return array of URLs
         }
         
         return false;
@@ -251,26 +254,50 @@
         return `<img src="${imageUrl}" ${className} style="${styles.join('; ')}" alt="Image" loading="lazy">`;
     }
     
-    function extractImageFromCell(text) {
-        if (!text) return null;
+    function extractImagesFromCell(text) {
+        if (!text) return [];
         
+        // Handle IMAGE formula (usually only one per cell in GSheets)
         const imageFormulaMatch = text.match(/=IMAGE\s*\(\s*["']([^"']+)["']/i);
         if (imageFormulaMatch) {
-            console.log('[Accordion] Found IMAGE formula:', imageFormulaMatch[1]);
-            return imageFormulaMatch[1];
+            return [imageFormulaMatch[1]];
         }
         
-        const urlPattern = /(https?:\/\/[^\s<"']+)/;
-        const match = text.match(urlPattern);
-        if (match) {
-            const url = match[1];
-            if (isImageURL(url)) {
-                console.log('[Accordion] Found image URL:', url);
-                return url;
+        // Handle Rich Text from GSheets (where links might be wrapped in tags)
+        // Use a robust way to extract all URLs that are image URLs from each line
+        const urls = [];
+        
+        // Use a temporary element to clean up HTML and handle line breaks
+        const temp = document.createElement('div');
+        temp.innerHTML = text;
+        
+        // Replace various line-breaking tags with actual newlines
+        const cleanedHtml = temp.innerHTML
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/p>/gi, '\n')
+            .replace(/<\/div>/gi, '\n')
+            .replace(/<p[^>]*>/gi, '')
+            .replace(/<div[^>]*>/gi, '');
+            
+        const temp2 = document.createElement('div');
+        temp2.innerHTML = cleanedHtml;
+        const plainText = temp2.textContent || temp2.innerText || '';
+
+        // Split by newlines and filter out empty lines
+        const lines = plainText.split(/\n/).map(line => line.trim()).filter(line => line !== '');
+        
+        lines.forEach(line => {
+            // Match the first URL in the line
+            const urlMatch = line.match(/(https?:\/\/[^\s<"']+)/);
+            if (urlMatch) {
+                const url = urlMatch[1];
+                if (isImageURL(url)) {
+                    urls.push(url);
+                }
             }
-        }
-        
-        return null;
+        });
+
+        return urls;
     }
 
     function loadGoogleFont(fontName) {
@@ -494,22 +521,46 @@
     function convertURLsToLinks(text, isInCell = false, lazyMode = false) {
         if (!text) return '';
         
-        // First check: Is the entire cell just an image URL?
-        const directImageUrl = isDirectImageURL(text);
-        if (directImageUrl) {
-            if (lazyMode) {
-                return generateLazyImagePlaceholder(directImageUrl, isInCell);
+        // First check: Is the entire cell just image URL(s)?
+        const directImageUrls = isDirectImageURL(text);
+        if (directImageUrls) {
+            if (isInCell) {
+                // For question cells, only use the first image
+                const firstImageUrl = directImageUrls[0];
+                if (lazyMode) {
+                    return generateLazyImagePlaceholder(firstImageUrl, isInCell);
+                }
+                return generateImageTag(firstImageUrl, isInCell);
+            } else {
+                // For answer cells, stack all images
+                return directImageUrls.map(url => {
+                    if (lazyMode) {
+                        return generateLazyImagePlaceholder(url, isInCell);
+                    }
+                    return generateImageTag(url, isInCell);
+                }).join('');
             }
-            return generateImageTag(directImageUrl, isInCell);
         }
         
         // Second check: Is it an =IMAGE() formula?
-        const imageUrl = extractImageFromCell(text);
-        if (imageUrl) {
-            if (lazyMode) {
-                return generateLazyImagePlaceholder(imageUrl, isInCell);
+        const imageUrls = extractImagesFromCell(text);
+        if (imageUrls.length > 0) {
+            if (isInCell) {
+                // For question cells, only use the first image
+                const firstImageUrl = imageUrls[0];
+                if (lazyMode) {
+                    return generateLazyImagePlaceholder(firstImageUrl, isInCell);
+                }
+                return generateImageTag(firstImageUrl, isInCell);
+            } else {
+                // For answer cells, stack all images
+                return imageUrls.map(url => {
+                    if (lazyMode) {
+                        return generateLazyImagePlaceholder(url, isInCell);
+                    }
+                    return generateImageTag(url, isInCell);
+                }).join('');
             }
-            return generateImageTag(imageUrl, isInCell);
         }
         
         let result = preserveWhitespace(text);
@@ -1410,7 +1461,8 @@
                     
                     if (directImageUrl && hasUrl) {
                         // Cell has image URL AND a link URL - wrap image in link
-                        const imageTag = generateImageTag(directImageUrl, true);
+                        // Note: directImageUrl is an array here
+                        const imageTag = generateImageTag(directImageUrl[0], true);
                         linkedValue = (isHeaderRow ? "" : questionPrefix) + `<a href="${cleanUrl}" target="_blank">${imageTag}</a>`;
                     } else if (hasUrl) {
                         // Cell has link URL but no image - wrap text in link
@@ -1500,11 +1552,34 @@
                             }
                             cleanCellValue = cleanCellValue.trim();
 
-                            const imageUrl = isDirectImageURL(cleanCellValue);
+                            const imageUrls = isDirectImageURL(cleanCellValue);
                             
-                            if (imageUrl) {
-                                enlargedThumbnail = `<div class="accordion-answer-thumbnail"><img src="${imageUrl}" alt="Enlarged thumbnail" loading="lazy"></div>`;
-                                break; // Use only the first (leftmost) image found
+                            if (imageUrls && imageUrls.length > 0) {
+                                // Check if this column has a mapped URL
+                                const urlColIndex = urlColumnIndices[i];
+                                const rawUrl = (urlColIndex !== undefined && urlColIndex !== 'SHOW' && typeof urlColIndex === 'number') ? (row[urlColIndex] || '').toString() : '';
+                                
+                                let cleanUrl = rawUrl;
+                                if (cleanUrl.includes('<')) {
+                                    const temp = document.createElement('div');
+                                    temp.innerHTML = cleanUrl;
+                                    cleanUrl = temp.textContent || temp.innerText || '';
+                                }
+                                cleanUrl = cleanUrl.trim();
+                                const hasUrl = cleanUrl && /^https?:\/\//i.test(cleanUrl);
+
+                                // Stack all images from the first column that has images
+                                enlargedThumbnail = '<div class="accordion-answer-thumbnail">';
+                                imageUrls.forEach(url => {
+                                    const imgTag = `<img src="${url}" alt="Enlarged thumbnail" loading="lazy" style="display: block; margin-bottom: 5px;">`;
+                                    if (hasUrl) {
+                                        enlargedThumbnail += `<a href="${cleanUrl}" target="_blank">${imgTag}</a>`;
+                                    } else {
+                                        enlargedThumbnail += imgTag;
+                                    }
+                                });
+                                enlargedThumbnail += '</div>';
+                                break; // Use images from the first (leftmost) column found
                             }
                         }
                     }
