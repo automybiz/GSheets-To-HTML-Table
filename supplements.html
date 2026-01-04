@@ -59,6 +59,9 @@
         QUESTION_COLUMNS: ['B','SHOW','D','F'], // Define which columns contain the questions. Also include a column titled "SHOW" to enable column that holds the SHOW_HIDE_ICON which shows whether the answer row is shown or hidden.
         ANSWER_COLUMN: 'E', // Define which column contains the answers or leave blank to disable answers
         URL_COLUMNS: ['C'], // Define GSheets columns containing URLs map to the corrosponding question columns (e.g., if QUESTION_COLUMNS is ['B','D'], and you want to map B to a column that only stores URLs like C, set URL_COLUMNS to ['C']). Note: B is first in the QUESTION_COLUMNS array, so C is first in the URL_COLUMNS array.
+        VIEWED_COLUMN: 'D', // Define which question column contains the viewed status for answers that have been viewed/expanded (e.g., 'Previously Viewed'). Leave blank to disable viewed status.
+        VIEWED_TEXT: 'Previously Viewed', // Text to indicate that the item has been previously viewed.
+        VIEWED_DELAY: 3, // Delay in seconds before marking an answer as viewed (e.g., 30 = 30 seconds). Set to 0 to mark as viewed immediately when answer is shown.
         SHOW_HIDE_ICON_SVG: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="m5.25 4.5 7.5 7.5-7.5 7.5m6-15 7.5 7.5-7.5 7.5" /></svg>', // SVG tag for the show/hide icon. You can copy SVG code ( <svg ... ><path ... /></svg> ) from sites like heroicons.com. Leave blank and a default chevron will be used.
         SHOW_HIDE_DIRECTION_SHOWN: 'down', // Options: 'down', 'up', 'left', 'right' (direction of the icon when answer is shown)
         SHOW_HIDE_DIRECTION_HIDDEN: 'right', // Options: 'down', 'up', 'left', 'right' (direction of the icon when answer is hidden)
