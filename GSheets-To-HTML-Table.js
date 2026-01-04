@@ -63,6 +63,7 @@
     let countdownInterval = null;
     let isPaused = false;
     let dateRange = { min: Infinity, max: -Infinity };
+    const viewedTimers = new Map();
     
     // Animation settings mapping
     const transitionEffects = {
@@ -87,6 +88,79 @@
     
     function getAnswerColumnIndex() {
         return columnLetterToIndex(CONFIG.ANSWER_COLUMN);
+    }
+
+    // ============================================
+    // VIEWED STATUS FUNCTIONS
+    // ============================================
+    const VIEWED_STORAGE_KEY = 'gsheets_viewed_' + CONFIG.SPREADSHEET_ID;
+    
+    function loadViewedData() {
+        try {
+            const data = localStorage.getItem(VIEWED_STORAGE_KEY);
+            return data ? JSON.parse(data) : {};
+        } catch (e) {
+            console.warn('[Accordion] Failed to load viewed data', e);
+            return {};
+        }
+    }
+    
+    function saveViewedData(data) {
+        try {
+            localStorage.setItem(VIEWED_STORAGE_KEY, JSON.stringify(data));
+        } catch (e) {
+            console.warn('[Accordion] Failed to save viewed data', e);
+        }
+    }
+
+    function getViewedBadgeColor(timestamp, minTime, maxTime) {
+        if (!timestamp || minTime === maxTime) return CONFIG.DATE_DOTS_HEAT_MAP.COLOR_MOST_RECENT;
+        const factor = (timestamp - minTime) / (maxTime - minTime);
+        return interpolateColor(CONFIG.DATE_DOTS_HEAT_MAP.COLOR_LEAST_RECENT, CONFIG.DATE_DOTS_HEAT_MAP.COLOR_MOST_RECENT, factor);
+    }
+    
+    function createViewedBadge(timestamp, minTime, maxTime) {
+        if (!timestamp) return '';
+        
+        const color = getViewedBadgeColor(timestamp, minTime, maxTime);
+        const dateObj = new Date(timestamp);
+        
+        // Format: YYYY-MM-DD HH:MMam/pm
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        let hours = dateObj.getHours();
+        const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'pm' : 'am';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // the hour '0' should be '12'
+        const strTime = `${hours}:${minutes}${ampm}`;
+        const dateStr = `${year}-${month}-${day} ${strTime}`;
+        
+        // Tooltip content
+        const colorLeast = CONFIG.DATE_DOTS_HEAT_MAP.COLOR_LEAST_RECENT;
+        const colorMost = CONFIG.DATE_DOTS_HEAT_MAP.COLOR_MOST_RECENT;
+        const title = `${dateStr}\nLeast Recent BG Color = ${colorLeast}\nMost Recent BG Color = ${colorMost}`;
+        
+        return `<span class="viewed-badge" style="background-color: ${color};" title="${title}">${CONFIG.VIEWED_TEXT}</span>`;
+    }
+
+    function refreshAllViewedBadges() {
+        // Reload data to get fresh min/max
+        const viewedData = loadViewedData();
+        const timestamps = Object.values(viewedData);
+        if (timestamps.length === 0) return;
+        
+        const minTime = Math.min(...timestamps);
+        const maxTime = Math.max(...timestamps);
+        
+        // Update all existing badges
+        document.querySelectorAll('.viewed-badge-container').forEach(container => {
+            const rowId = container.dataset.rowId;
+            if (viewedData[rowId]) {
+                container.innerHTML = createViewedBadge(viewedData[rowId], minTime, maxTime);
+            }
+        });
     }
 
     function getUrlColumnIndices() {
@@ -1304,6 +1378,13 @@
         const urlColumnIndices = getUrlColumnIndices();
         const hasAutoNumbering = CONFIG.AUTO_NUMBER_COLUMN !== null;
         const numColumns = questionColumnIndices.length + (hasAutoNumbering ? 1 : 0);
+
+        // Viewed Status Setup
+        const viewedColumnIndex = CONFIG.VIEWED_COLUMN ? columnLetterToIndex(CONFIG.VIEWED_COLUMN) : -1;
+        const viewedData = loadViewedData();
+        const viewedTimestamps = Object.values(viewedData);
+        const viewedMinTime = viewedTimestamps.length ? Math.min(...viewedTimestamps) : 0;
+        const viewedMaxTime = viewedTimestamps.length ? Math.max(...viewedTimestamps) : 0;
         
         // Get transition settings (convert milliseconds to seconds)
         const transitionSpeed = (CONFIG.ANSWER_TRANSITION_SPEED / 1000) + 's';
@@ -1505,6 +1586,20 @@
 
                     const alignment = alignmentToUse[i] || 'left';
                     
+                    // Add Viewed Badge if applicable
+                    if (colIndex === viewedColumnIndex) {
+                        const rawText = cellValue ? cellValue.replace(/<[^>]*>/g, '').trim() : '';
+                        if (rawText && viewedData[rawText]) {
+                            const badge = createViewedBadge(viewedData[rawText], viewedMinTime, viewedMaxTime);
+                            const rowIdSafe = rawText.replace(/"/g, '"');
+                            linkedValue = `<span class="viewed-badge-container" data-row-id="${rowIdSafe}">${badge}</span>` + linkedValue;
+                        } else if (rawText) {
+                            // Container for potential future badge
+                            const rowIdSafe = rawText.replace(/"/g, '"');
+                            linkedValue = `<span class="viewed-badge-container" data-row-id="${rowIdSafe}"></span>` + linkedValue;
+                        }
+                    }
+
                     // Check if cell contains only an image
                     const isImageCell = linkedValue.includes('class="accordion-image-content"');
                     const cellClass = isImageCell ? 'accordion-image-cell' : '';
@@ -1523,6 +1618,10 @@
                         styleParts.push('padding-bottom: 10px');
                         styleParts.push('font-size: var(--question-font-size)');
                         styleParts.push('color: var(--question-font-color)');
+                    }
+
+                    if (colIndex === viewedColumnIndex) {
+                        styleParts.push('position: relative');
                     }
 
                     const styleAttribute = styleParts.length > 0 ? ` style="${styleParts.join('; ')}"` : '';
@@ -1654,9 +1753,42 @@
                     }, parseFloat(duration) * 1000);
                 }
                 
+                // Start Viewed Timer
+                const badgeContainer = item.querySelector('.viewed-badge-container');
+                const rowId = badgeContainer ? badgeContainer.dataset.rowId : null;
+                
+                if (rowId) {
+                    // Normalize HTML entities in ID just in case
+                    const cleanRowId = rowId.replace(/"/g, '"');
+                    
+                    if (CONFIG.VIEWED_DELAY > 0) {
+                        const timerId = setTimeout(() => {
+                            const viewedData = loadViewedData();
+                            viewedData[cleanRowId] = Date.now();
+                            saveViewedData(viewedData);
+                            refreshAllViewedBadges();
+                            viewedTimers.delete(index);
+                        }, CONFIG.VIEWED_DELAY * 1000);
+                        viewedTimers.set(index, timerId);
+                    } else {
+                        // Immediate
+                        const viewedData = loadViewedData();
+                        viewedData[cleanRowId] = Date.now();
+                        saveViewedData(viewedData);
+                        refreshAllViewedBadges();
+                    }
+                }
+
                 item.classList.add('active');
             } else {
                 // Closing - remove instantly
+                
+                // Cancel Viewed Timer
+                if (viewedTimers.has(index)) {
+                    clearTimeout(viewedTimers.get(index));
+                    viewedTimers.delete(index);
+                }
+
                 answerWrapper.style.transition = 'none';
                 item.classList.remove('active');
                 
