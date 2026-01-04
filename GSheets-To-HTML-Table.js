@@ -63,6 +63,7 @@
     let countdownInterval = null;
     let isPaused = false;
     let dateRange = { min: Infinity, max: -Infinity };
+    const viewedTimers = new Map();
     
     // Animation settings mapping
     const transitionEffects = {
@@ -87,6 +88,79 @@
     
     function getAnswerColumnIndex() {
         return columnLetterToIndex(CONFIG.ANSWER_COLUMN);
+    }
+
+    // ============================================
+    // VIEWED STATUS FUNCTIONS
+    // ============================================
+    const VIEWED_STORAGE_KEY = 'gsheets_viewed_' + CONFIG.SPREADSHEET_ID;
+    
+    function loadViewedData() {
+        try {
+            const data = localStorage.getItem(VIEWED_STORAGE_KEY);
+            return data ? JSON.parse(data) : {};
+        } catch (e) {
+            console.warn('[Accordion] Failed to load viewed data', e);
+            return {};
+        }
+    }
+    
+    function saveViewedData(data) {
+        try {
+            localStorage.setItem(VIEWED_STORAGE_KEY, JSON.stringify(data));
+        } catch (e) {
+            console.warn('[Accordion] Failed to save viewed data', e);
+        }
+    }
+
+    function getViewedBadgeColor(timestamp, minTime, maxTime) {
+        if (!timestamp || minTime === maxTime) return CONFIG.DATE_DOTS_HEAT_MAP.COLOR_MOST_RECENT;
+        const factor = (timestamp - minTime) / (maxTime - minTime);
+        return interpolateColor(CONFIG.DATE_DOTS_HEAT_MAP.COLOR_LEAST_RECENT, CONFIG.DATE_DOTS_HEAT_MAP.COLOR_MOST_RECENT, factor);
+    }
+    
+    function createViewedBadge(timestamp, minTime, maxTime) {
+        if (!timestamp) return '';
+        
+        const color = getViewedBadgeColor(timestamp, minTime, maxTime);
+        const dateObj = new Date(timestamp);
+        
+        // Format: YYYY-MM-DD HH:MMam/pm
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        let hours = dateObj.getHours();
+        const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'pm' : 'am';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // the hour '0' should be '12'
+        const strTime = `${hours}:${minutes}${ampm}`;
+        const dateStr = `${year}-${month}-${day} ${strTime}`;
+        
+        // Tooltip content
+        const colorLeast = CONFIG.DATE_DOTS_HEAT_MAP.COLOR_LEAST_RECENT;
+        const colorMost = CONFIG.DATE_DOTS_HEAT_MAP.COLOR_MOST_RECENT;
+        const title = `${dateStr}\nLeast Recent BG Color = ${colorLeast}\nMost Recent BG Color = ${colorMost}`;
+        
+        return `<span class="viewed-badge" style="background-color: ${color};" title="${title}">${CONFIG.VIEWED_TEXT}</span>`;
+    }
+
+    function refreshAllViewedBadges() {
+        // Reload data to get fresh min/max
+        const viewedData = loadViewedData();
+        const timestamps = Object.values(viewedData);
+        if (timestamps.length === 0) return;
+        
+        const minTime = Math.min(...timestamps);
+        const maxTime = Math.max(...timestamps);
+        
+        // Update all existing badges
+        document.querySelectorAll('.viewed-badge-container').forEach(container => {
+            const rowId = container.dataset.rowId;
+            if (viewedData[rowId]) {
+                container.innerHTML = createViewedBadge(viewedData[rowId], minTime, maxTime);
+            }
+        });
     }
 
     function getUrlColumnIndices() {
@@ -137,17 +211,20 @@
         
         const trimmedText = text.trim();
         
-        // Check if the entire cell content is just a URL (no other text)
-        const urlOnlyPattern = /^(https?:\/\/[^\s]+)$/;
-        const match = trimmedText.match(urlOnlyPattern);
-        
-        if (match) {
-            const url = match[1];
-            // Check if starts with http and ends with image extension
-            if ((url.startsWith('http://') || url.startsWith('https://')) && isImageURL(url)) {
-                console.log('[Accordion] Direct image URL detected:', url);
-                return url;
-            }
+        // Split by newlines and filter out empty lines
+        const lines = trimmedText.split(/\r?\n/).map(line => line.trim()).filter(line => line !== '');
+        if (lines.length === 0) return false;
+
+        // Check if every non-empty line is an image URL
+        const allAreImages = lines.every(line => {
+            const urlOnlyPattern = /^(https?:\/\/[^\s]+)$/;
+            const match = line.match(urlOnlyPattern);
+            return match && isImageURL(match[1]);
+        });
+
+        if (allAreImages) {
+            console.log('[Accordion] Direct image URL(s) detected');
+            return lines; // Return array of URLs
         }
         
         return false;
@@ -251,26 +328,50 @@
         return `<img src="${imageUrl}" ${className} style="${styles.join('; ')}" alt="Image" loading="lazy">`;
     }
     
-    function extractImageFromCell(text) {
-        if (!text) return null;
+    function extractImagesFromCell(text) {
+        if (!text) return [];
         
+        // Handle IMAGE formula (usually only one per cell in GSheets)
         const imageFormulaMatch = text.match(/=IMAGE\s*\(\s*["']([^"']+)["']/i);
         if (imageFormulaMatch) {
-            console.log('[Accordion] Found IMAGE formula:', imageFormulaMatch[1]);
-            return imageFormulaMatch[1];
+            return [imageFormulaMatch[1]];
         }
         
-        const urlPattern = /(https?:\/\/[^\s<"']+)/;
-        const match = text.match(urlPattern);
-        if (match) {
-            const url = match[1];
-            if (isImageURL(url)) {
-                console.log('[Accordion] Found image URL:', url);
-                return url;
+        // Handle Rich Text from GSheets (where links might be wrapped in tags)
+        // Use a robust way to extract all URLs that are image URLs from each line
+        const urls = [];
+        
+        // Use a temporary element to clean up HTML and handle line breaks
+        const temp = document.createElement('div');
+        temp.innerHTML = text;
+        
+        // Replace various line-breaking tags with actual newlines
+        const cleanedHtml = temp.innerHTML
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/p>/gi, '\n')
+            .replace(/<\/div>/gi, '\n')
+            .replace(/<p[^>]*>/gi, '')
+            .replace(/<div[^>]*>/gi, '');
+            
+        const temp2 = document.createElement('div');
+        temp2.innerHTML = cleanedHtml;
+        const plainText = temp2.textContent || temp2.innerText || '';
+
+        // Split by newlines and filter out empty lines
+        const lines = plainText.split(/\n/).map(line => line.trim()).filter(line => line !== '');
+        
+        lines.forEach(line => {
+            // Match the first URL in the line
+            const urlMatch = line.match(/(https?:\/\/[^\s<"']+)/);
+            if (urlMatch) {
+                const url = urlMatch[1];
+                if (isImageURL(url)) {
+                    urls.push(url);
+                }
             }
-        }
-        
-        return null;
+        });
+
+        return urls;
     }
 
     function loadGoogleFont(fontName) {
@@ -494,22 +595,46 @@
     function convertURLsToLinks(text, isInCell = false, lazyMode = false) {
         if (!text) return '';
         
-        // First check: Is the entire cell just an image URL?
-        const directImageUrl = isDirectImageURL(text);
-        if (directImageUrl) {
-            if (lazyMode) {
-                return generateLazyImagePlaceholder(directImageUrl, isInCell);
+        // First check: Is the entire cell just image URL(s)?
+        const directImageUrls = isDirectImageURL(text);
+        if (directImageUrls) {
+            if (isInCell) {
+                // For question cells, only use the first image
+                const firstImageUrl = directImageUrls[0];
+                if (lazyMode) {
+                    return generateLazyImagePlaceholder(firstImageUrl, isInCell);
+                }
+                return generateImageTag(firstImageUrl, isInCell);
+            } else {
+                // For answer cells, stack all images
+                return directImageUrls.map(url => {
+                    if (lazyMode) {
+                        return generateLazyImagePlaceholder(url, isInCell);
+                    }
+                    return generateImageTag(url, isInCell);
+                }).join('');
             }
-            return generateImageTag(directImageUrl, isInCell);
         }
         
         // Second check: Is it an =IMAGE() formula?
-        const imageUrl = extractImageFromCell(text);
-        if (imageUrl) {
-            if (lazyMode) {
-                return generateLazyImagePlaceholder(imageUrl, isInCell);
+        const imageUrls = extractImagesFromCell(text);
+        if (imageUrls.length > 0) {
+            if (isInCell) {
+                // For question cells, only use the first image
+                const firstImageUrl = imageUrls[0];
+                if (lazyMode) {
+                    return generateLazyImagePlaceholder(firstImageUrl, isInCell);
+                }
+                return generateImageTag(firstImageUrl, isInCell);
+            } else {
+                // For answer cells, stack all images
+                return imageUrls.map(url => {
+                    if (lazyMode) {
+                        return generateLazyImagePlaceholder(url, isInCell);
+                    }
+                    return generateImageTag(url, isInCell);
+                }).join('');
             }
-            return generateImageTag(imageUrl, isInCell);
         }
         
         let result = preserveWhitespace(text);
@@ -1253,6 +1378,13 @@
         const urlColumnIndices = getUrlColumnIndices();
         const hasAutoNumbering = CONFIG.AUTO_NUMBER_COLUMN !== null;
         const numColumns = questionColumnIndices.length + (hasAutoNumbering ? 1 : 0);
+
+        // Viewed Status Setup
+        const viewedColumnIndex = CONFIG.VIEWED_COLUMN ? columnLetterToIndex(CONFIG.VIEWED_COLUMN) : -1;
+        const viewedData = loadViewedData();
+        const viewedTimestamps = Object.values(viewedData);
+        const viewedMinTime = viewedTimestamps.length ? Math.min(...viewedTimestamps) : 0;
+        const viewedMaxTime = viewedTimestamps.length ? Math.max(...viewedTimestamps) : 0;
         
         // Get transition settings (convert milliseconds to seconds)
         const transitionSpeed = (CONFIG.ANSWER_TRANSITION_SPEED / 1000) + 's';
@@ -1396,21 +1528,31 @@
                     // Optional URL for this question column (from CONFIG.URL_COLUMNS)
                     let linkedValue = '';
                     const urlColIndex = urlColumnIndices[i];
-                    const rawUrl = (typeof urlColIndex === 'number') ? (row[urlColIndex] || '').toString().trim() : '';
-                    const hasUrl = rawUrl && /^https?:\/\//i.test(rawUrl);
+                    const rawUrl = (urlColIndex !== undefined && urlColIndex !== 'SHOW' && typeof urlColIndex === 'number') ? (row[urlColIndex] || '').toString() : '';
+                    
+                    // Strip HTML from rawUrl in case it's a formatted cell
+                    let cleanUrl = rawUrl;
+                    if (cleanUrl.includes('<')) {
+                        const temp = document.createElement('div');
+                        temp.innerHTML = cleanUrl;
+                        cleanUrl = temp.textContent || temp.innerText || '';
+                    }
+                    cleanUrl = cleanUrl.trim();
+                    const hasUrl = cleanUrl && /^https?:\/\//i.test(cleanUrl);
                     
                     if (directImageUrl && hasUrl) {
                         // Cell has image URL AND a link URL - wrap image in link
-                        const imageTag = generateImageTag(directImageUrl, true);
-                        linkedValue = `<a href="${rawUrl}" target="_blank">${imageTag}</a>`;
+                        // Note: directImageUrl is an array here
+                        const imageTag = generateImageTag(directImageUrl[0], true);
+                        linkedValue = (isHeaderRow ? "" : questionPrefix) + `<a href="${cleanUrl}" target="_blank">${imageTag}</a>`;
                     } else if (hasUrl) {
                         // Cell has link URL but no image - wrap text in link
                         const processedValue = convertURLsToLinks(cellValue, true, false);
-                        linkedValue = (isHeaderRow ? '' : questionPrefix) + `<a href="${rawUrl}" target="_blank">${processedValue}</a>`;
+                        linkedValue = (isHeaderRow ? "" : questionPrefix) + `<a href="${cleanUrl}" target="_blank">${processedValue}</a>`;
                     } else {
                         // No link URL - use existing URL/image detection. No lazy loading for question cells.
                         const processedValue = convertURLsToLinks(cellValue, true, false);
-                        linkedValue = (isHeaderRow ? '' : questionPrefix) + processedValue;
+                        linkedValue = (isHeaderRow ? "" : questionPrefix) + processedValue;
                     }
 
                     // Date Dot Heat Map logic (supports true or 1)
@@ -1444,6 +1586,20 @@
 
                     const alignment = alignmentToUse[i] || 'left';
                     
+                    // Add Viewed Badge if applicable
+                    if (colIndex === viewedColumnIndex) {
+                        const rawText = cellValue ? cellValue.replace(/<[^>]*>/g, '').trim() : '';
+                        if (rawText && viewedData[rawText]) {
+                            const badge = createViewedBadge(viewedData[rawText], viewedMinTime, viewedMaxTime);
+                            const rowIdSafe = rawText.replace(/"/g, '"');
+                            linkedValue = `<span class="viewed-badge-container" data-row-id="${rowIdSafe}">${badge}</span>` + linkedValue;
+                        } else if (rawText) {
+                            // Container for potential future badge
+                            const rowIdSafe = rawText.replace(/"/g, '"');
+                            linkedValue = `<span class="viewed-badge-container" data-row-id="${rowIdSafe}"></span>` + linkedValue;
+                        }
+                    }
+
                     // Check if cell contains only an image
                     const isImageCell = linkedValue.includes('class="accordion-image-content"');
                     const cellClass = isImageCell ? 'accordion-image-cell' : '';
@@ -1462,6 +1618,10 @@
                         styleParts.push('padding-bottom: 10px');
                         styleParts.push('font-size: var(--question-font-size)');
                         styleParts.push('color: var(--question-font-color)');
+                    }
+
+                    if (colIndex === viewedColumnIndex) {
+                        styleParts.push('position: relative');
                     }
 
                     const styleAttribute = styleParts.length > 0 ? ` style="${styleParts.join('; ')}"` : '';
@@ -1491,11 +1651,34 @@
                             }
                             cleanCellValue = cleanCellValue.trim();
 
-                            const imageUrl = isDirectImageURL(cleanCellValue);
+                            const imageUrls = isDirectImageURL(cleanCellValue);
                             
-                            if (imageUrl) {
-                                enlargedThumbnail = `<div class="accordion-answer-thumbnail"><img src="${imageUrl}" alt="Enlarged thumbnail" loading="lazy"></div>`;
-                                break; // Use only the first (leftmost) image found
+                            if (imageUrls && imageUrls.length > 0) {
+                                // Check if this column has a mapped URL
+                                const urlColIndex = urlColumnIndices[i];
+                                const rawUrl = (urlColIndex !== undefined && urlColIndex !== 'SHOW' && typeof urlColIndex === 'number') ? (row[urlColIndex] || '').toString() : '';
+                                
+                                let cleanUrl = rawUrl;
+                                if (cleanUrl.includes('<')) {
+                                    const temp = document.createElement('div');
+                                    temp.innerHTML = cleanUrl;
+                                    cleanUrl = temp.textContent || temp.innerText || '';
+                                }
+                                cleanUrl = cleanUrl.trim();
+                                const hasUrl = cleanUrl && /^https?:\/\//i.test(cleanUrl);
+
+                                // Stack all images from the first column that has images
+                                enlargedThumbnail = '<div class="accordion-answer-thumbnail">';
+                                imageUrls.forEach(url => {
+                                    const imgTag = `<img src="${url}" alt="Enlarged thumbnail" loading="lazy" style="display: block; margin-bottom: 5px;">`;
+                                    if (hasUrl) {
+                                        enlargedThumbnail += `<a href="${cleanUrl}" target="_blank">${imgTag}</a>`;
+                                    } else {
+                                        enlargedThumbnail += imgTag;
+                                    }
+                                });
+                                enlargedThumbnail += '</div>';
+                                break; // Use images from the first (leftmost) column found
                             }
                         }
                     }
@@ -1570,9 +1753,42 @@
                     }, parseFloat(duration) * 1000);
                 }
                 
+                // Start Viewed Timer
+                const badgeContainer = item.querySelector('.viewed-badge-container');
+                const rowId = badgeContainer ? badgeContainer.dataset.rowId : null;
+                
+                if (rowId) {
+                    // Normalize HTML entities in ID just in case
+                    const cleanRowId = rowId.replace(/"/g, '"');
+                    
+                    if (CONFIG.VIEWED_DELAY > 0) {
+                        const timerId = setTimeout(() => {
+                            const viewedData = loadViewedData();
+                            viewedData[cleanRowId] = Date.now();
+                            saveViewedData(viewedData);
+                            refreshAllViewedBadges();
+                            viewedTimers.delete(index);
+                        }, CONFIG.VIEWED_DELAY * 1000);
+                        viewedTimers.set(index, timerId);
+                    } else {
+                        // Immediate
+                        const viewedData = loadViewedData();
+                        viewedData[cleanRowId] = Date.now();
+                        saveViewedData(viewedData);
+                        refreshAllViewedBadges();
+                    }
+                }
+
                 item.classList.add('active');
             } else {
                 // Closing - remove instantly
+                
+                // Cancel Viewed Timer
+                if (viewedTimers.has(index)) {
+                    clearTimeout(viewedTimers.get(index));
+                    viewedTimers.delete(index);
+                }
+
                 answerWrapper.style.transition = 'none';
                 item.classList.remove('active');
                 
