@@ -15,10 +15,12 @@ A lightweight, highly configurable JavaScript library that transforms Google She
 - **Common Search Tags**: Quick-click tags for frequently searched terms.
 - **Animated Search Box**: Eye-catching typewriter animation for the search placeholder.
 - **Global Search**: Support for searching across multiple table instances on the same page.
+- **Viewed Status Tracking**: Map a specific column to track previously expanded answer rows by adding a 'Previously Viewed' Badge in the top right corner of the mapped cell which also has a configurable "viewed" delay. The background color also has a Heat Map feature which by default changes the color to blue for least recently viewed expanded answer rows and red for most recently viewed expanded answer rows.
 
 ### 🖼️ Media & Links
-- **Auto Image Detection**: Automatically converts image URLs or `=IMAGE()` formulas into thumbnails.
-- **YouTube Embedding**: Detects YouTube URLs and converts them into embedded video players while also preserving time stamps in seconds. ie: ?t=123s
+- **Auto Image Detection**: Automatically converts image URLs or `=IMAGE()` formulas into thumbnails. Supports multiple image URLs per cell (one per line).
+- **Enlarged Answer Thumbnails**: Optionally display all images from a row's leftmost image column as a vertically stacked gallery in the expanded answer row.
+- **YouTube Embedding**: Detects YouTube URLs and converts them into embedded video players while also preserving time stamps in seconds. ie: ( ?t=123s ). Also works for Shorts and Playlists. Note: YouTube Playlist URL's don't need the ( &index= ) parameter. You can still use it if you want but the index param will be stripped out of the url to keep things neat and tidy. You can also load the default video you want to start playing in the playlist by defining that video using the ( ?v= ) param. 
 - **Lazy Loading**: High-performance loading for images and videos (loads only when hovered or clicked).
 - **Auto-Linking**: Converts plain text URLs into clickable, trackable links.
 
@@ -26,12 +28,14 @@ A lightweight, highly configurable JavaScript library that transforms Google She
 - **Highly Configurable**: Control everything from column widths and alignment to custom prefixes.
 - **Interactive Animations**: Smooth accordion transitions with multiple easing effects (Smooth, Snap, Bounce, etc.).
 - **Text Entry Effects**: Stylish entry animations for expanded content (Fade, Slide, Zoom, Blur, Rotate, Elastic).
+- **Date Dots Heat Mapping**: Automatically visualizes data recency with colored dots which by default changes the dot color to blue for least recent dates and red for most recent dates.
 - **Responsive Layout**: Designed to work across different screen sizes with a clean, modern look.
 - **Auto-Numbering**: Optional automatic row numbering toggle on/off JavaScript variable.
 
 ### 🛠️ Technical Highlights
 - **No Dependencies**: Pure vanilla JavaScript - no jQuery or external libraries required.
 - **Multi-Instance Support**: Run multiple independent tables on a single page using unique instance IDs.
+- **Header Management**: Keep headers visible during search or suppress specific header cells for a cleaner look.
 - **Automatic Font Loading**: Automatically loads required Google Fonts specified in your spreadsheet.
 - **CORS Proxy Support**: Built-in option for handling CORS issues when necessary.
 - **Auto-Retry**: Robust error handling with automatic reconnection attempts on connection failure.
@@ -66,3 +70,7 @@ A lightweight, highly configurable JavaScript library that transforms Google She
 
     <script src="GSheets-To-HTML-Table.js"></script>
 ```
+
+### ⚙️ Configuration Options
+
+For more info on config options please see the HTML file examples.

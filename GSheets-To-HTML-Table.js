@@ -205,6 +205,11 @@
                googleDrivePattern.test(trimmedUrl) ||
                googleUserContentPattern.test(trimmedUrl);
     }
+
+    function isYouTubeURL(url) {
+        if (!url || typeof url !== 'string') return false;
+        return url.includes('youtube.com') || url.includes('youtu.be');
+    }
     
     function isDirectImageURL(text) {
         if (!text || typeof text !== 'string') return false;
@@ -558,8 +563,33 @@
             const iframe = document.createElement('iframe');
             iframe.width = CONFIG.YOUTUBE_EMBED_WIDTH;
             iframe.height = CONFIG.YOUTUBE_EMBED_HEIGHT;
-            iframe.src = `https://www.youtube.com/embed/${videoId}${timeParam}${playlistParam}`;
+            
+            // Build the same robust URL format for lazy loading
+            let finalUrl;
+            const playlistIdMatch = playlistParam ? playlistParam.match(/[&?]list=([a-zA-Z0-9_-]+)/) : null;
+            const playlistId = playlistIdMatch ? playlistIdMatch[1] : null;
+            
+            const startMatch = timeParam ? timeParam.match(/[?&]start=(\d+)/) : null;
+            const startTime = startMatch ? startMatch[1] : null;
+
+            if (videoId && playlistId) {
+                const params = new URLSearchParams();
+                params.set('list', playlistId);
+                if (startTime) params.set('start', startTime);
+                finalUrl = `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+            } else if (playlistId) {
+                const params = new URLSearchParams();
+                params.set('list', playlistId);
+                if (startTime) params.set('start', startTime);
+                finalUrl = `https://www.youtube.com/embed/videoseries?${params.toString()}`;
+            } else {
+                finalUrl = `https://www.youtube.com/embed/${videoId}${timeParam}`;
+            }
+
+            iframe.src = finalUrl;
+            iframe.title = 'YouTube video player';
             iframe.frameBorder = '0';
+            iframe.setAttribute('allowtransparency', 'true');
             iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
             iframe.allowFullscreen = true;
             iframe.className = 'accordion-answer-video';
@@ -640,23 +670,43 @@
         let result = preserveWhitespace(text);
         result = convertNewlinesToBR(result);
         
+        // Pre-process: Unwrap <a> tags that point to YouTube or Images
+        // This fixes the "rogue anchor" issue where GSheets auto-linked the URL
+        const anchorRegex = /<a\s+[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi;
+        result = result.replace(anchorRegex, (match, href, content) => {
+            if (isYouTubeURL(href) || isImageURL(href)) {
+                return href; // Unwrap to plain URL so the next regex can embed it properly
+            }
+            return match;
+        });
+        
         // Regex to match URLs but capture if they are inside href/src attributes
         // Group 1: Matches attribute prefix (href=", src=", href=', src=')
         // Group 2: Matches the URL inside the attribute quotes
         // Group 3: Matches the closing quote
         // Group 4: Matches a standalone URL (not inside an attribute)
-        // Note: We optionally match a following <br> tag for standalone URLs to prevent double line breaks
-        const urlRegex = /(href="|src="|href='|src=')((?:https?:\/\/)[^"']+)("|')|(https?:\/\/[^\s<]+)(?:\s*<br>)?/g;
+        // Note: We optionally match following <br> tags for standalone URLs to prevent double line breaks
+        const urlRegex = /(href="|src="|href='|src=')((?:https?:\/\/)[^"']+)("|')|(https?:\/\/[^\s<]+)((?:\s*<br>|\s)*)/g;
         
-        result = result.replace(urlRegex, (match, attrPrefix, urlInAttr, quote, plainUrl) => {
+        result = result.replace(urlRegex, (match, attrPrefix, urlInAttr, quote, plainUrl, followingContent) => {
             // If attrPrefix is defined, it means we matched an existing HTML attribute (Group 1)
             // We should return the whole match unchanged to preserve the existing link/image
             if (attrPrefix) {
                 return match;
             }
             
-            // Otherwise, we matched a standalone URL (Group 4)
-            const url = plainUrl;
+            // Standalone URL (Group 4)
+            let url = plainUrl;
+            
+            // Clean up common Rich Text wrapping tags if they've leaked into the URL string
+            // This happens if GSheets auto-formatted the link and our regex captured the surrounding tags
+            url = url.replace(/<\/?[aui]>|&nbsp;/gi, '');
+
+            // Subtract 1 <br> from following content if present
+            let processedFollowing = followingContent || '';
+            if (processedFollowing.includes('<br>')) {
+                processedFollowing = processedFollowing.replace('<br>', '');
+            }
             
             // YouTube Logic: Check for YouTube links to embed
             if (url.includes('youtube.com') || url.includes('youtu.be')) {
@@ -668,52 +718,104 @@
                 }
                 
                 let videoId = null;
-                let timeParam = '';
-                let playlistParam = '';
+                let playlistId = null;
+                let startTime = null;
                 let videoTitle = 'YouTube Video';
                 
-                // Extract Video ID
-                let match = url.match(/youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/);
+                // Extract Video ID from watch?v= format
+                let match = url.match(/[?&]v=([a-zA-Z0-9_-]+)/);
                 if (match) {
                     videoId = match[1];
-                    const tMatch = url.match(/[?&]t=(\d+)/);
-                    if (tMatch) timeParam = `?start=${tMatch[1]}`;
-                    const listMatch = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
-                    if (listMatch) playlistParam = `&list=${listMatch[1]}`;
                 }
                 
+                // Extract Video ID from /shorts/ format
+                if (!videoId) {
+                    match = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/);
+                    if (match) videoId = match[1];
+                }
+
+                // Extract Video ID from youtu.be/ format
                 if (!videoId) {
                     match = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
-                    if (match) {
-                        videoId = match[1];
-                        const tMatch = url.match(/[?&]t=(\d+)/);
-                        if (tMatch) timeParam = `?start=${tMatch[1]}`;
+                    if (match) videoId = match[1];
+                }
+
+                // Extract Playlist ID
+                const listMatch = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+                if (listMatch) {
+                    playlistId = listMatch[1];
+                }
+
+                // Extract Timestamp (t=)
+                const tMatch = url.match(/[?&]t=([0-9hms]+)/);
+                if (tMatch) {
+                    const tVal = tMatch[1];
+                    if (/^\d+$/.test(tVal)) {
+                        // Pure seconds
+                        startTime = tVal;
+                    } else {
+                        // Handle formats like 1m30s, 1h2m, etc.
+                        let totalSeconds = 0;
+                        const hMatch = tVal.match(/(\d+)h/);
+                        const mMatch = tVal.match(/(\d+)m/);
+                        const sMatch = tVal.match(/(\d+)s/);
+                        
+                        if (hMatch) totalSeconds += parseInt(hMatch[1]) * 3600;
+                        if (mMatch) totalSeconds += parseInt(mMatch[1]) * 60;
+                        if (sMatch) totalSeconds += parseInt(sMatch[1]);
+                        
+                        if (totalSeconds > 0) startTime = totalSeconds.toString();
                     }
                 }
                 
-                if (videoId) {
+                if (videoId || playlistId) {
+                    let finalUrl;
+                    if (videoId && playlistId) {
+                        // Priority format for starting at a specific video: embed/[VIDEO_ID]?list=[PLAYLIST_ID]
+                        const params = new URLSearchParams();
+                        params.set('list', playlistId);
+                        if (startTime) params.set('start', startTime);
+                        finalUrl = `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+                    } else if (playlistId) {
+                        // Fallback: embed/videoseries?list=[PLAYLIST_ID]
+                        const params = new URLSearchParams();
+                        params.set('list', playlistId);
+                        if (startTime) params.set('start', startTime);
+                        finalUrl = `https://www.youtube.com/embed/videoseries?${params.toString()}`;
+                    } else {
+                        // Standard: embed/[VIDEO_ID]?start=[TIME]
+                        const params = new URLSearchParams();
+                        if (startTime) params.set('start', startTime);
+                        const query = params.toString();
+                        finalUrl = `https://www.youtube.com/embed/${videoId}${query ? '?' + query : ''}`;
+                    }
+
                     const videoHtml = lazyMode 
-                        ? generateLazyYouTubePlaceholder(url, videoId, videoTitle, timeParam, playlistParam)
-                        : `<iframe width="${CONFIG.YOUTUBE_EMBED_WIDTH}" height="${CONFIG.YOUTUBE_EMBED_HEIGHT}" src="https://www.youtube.com/embed/${videoId}${timeParam}${playlistParam}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="accordion-answer-video"></iframe>`;
+                        ? generateLazyYouTubePlaceholder(url, videoId, videoTitle, startTime ? `?start=${startTime}` : '', playlistId ? `&list=${playlistId}` : '')
+                        : `<iframe width="${CONFIG.YOUTUBE_EMBED_WIDTH}" height="${CONFIG.YOUTUBE_EMBED_HEIGHT}" src="${finalUrl}" title="YouTube video player" frameborder="0" allowtransparency="true" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="accordion-answer-video"></iframe>`;
                     
                     if (!isInCell) {
                         const align = CONFIG.YOUTUBE_EMBED_ALIGN || 'right';
-                        return `<div class="accordion-video-container" style="text-align: ${align}">${videoHtml}</div>`;
+                        // Use !important on alignment to override any legacy Rich Text styles that might be wrapping this
+                        return `</div><div class="accordion-video-container" style="text-align: ${align} !important;">${videoHtml}</div><div>` + processedFollowing;
                     }
-                    return videoHtml;
+                    return videoHtml + processedFollowing;
                 }
             }
             
             // Image Logic: Check if the URL is a direct image link
             if (isImageURL(url)) {
+                let imgHtml = '';
                 if (lazyMode) {
-                    return generateLazyImagePlaceholder(url, isInCell);
+                    imgHtml = generateLazyImagePlaceholder(url, isInCell);
+                } else {
+                    imgHtml = generateImageTag(url, isInCell);
                 }
-                return generateImageTag(url, isInCell);
+                return imgHtml + processedFollowing;
             }
             
             // Default: Convert plain URL to clickable link
-            return `<a href="${url}" target="_blank">${url}</a>`;
+            return `<a href="${url}" target="_blank">${url}</a>` + processedFollowing;
         });
         
         return result;
