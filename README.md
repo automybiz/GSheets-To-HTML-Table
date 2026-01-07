@@ -73,4 +73,4 @@ A lightweight, highly configurable JavaScript library that transforms Google She
 
 ### ⚙️ Configuration Options
 
-For more info on config options please see the HTML file examples.
+For more info on config options please see the HTML file examples : ))
