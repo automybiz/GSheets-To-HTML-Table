@@ -73,4 +73,21 @@
         --text-no-background-size: 20px;
         --text-no-background-color: #FFF;
 
+        /* Badge Styling */
+        --badge-padding-horizontal: 6px;
+        --badge-padding-vertical: 2px;
+        --badge-font-size: 11px;
+        --badge-border-radius: 4px;
+
+        --badge-viewed-font-color: #FFF;
+        --badge-viewed-border-size: 0px;
+        --badge-viewed-border-color: #0FF;
+/* Note: --badge-viewed-bg-color IS Missing On Purpose!  */
+/* Because It's Colored With A Dynamically Generated Head Map! */
+
+        --badge-unseen-font-color: #000;
+        --badge-unseen-border-color: #FFF;
+        --badge-unseen-border-size: 0px;
+        --badge-unseen-bg-color: #0F0;
+
     }

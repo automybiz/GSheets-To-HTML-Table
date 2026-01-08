@@ -142,7 +142,12 @@
         const colorMost = CONFIG.DATE_DOTS_HEAT_MAP.COLOR_MOST_RECENT;
         const title = `${dateStr}\nLeast Recent BG Color = ${colorLeast}\nMost Recent BG Color = ${colorMost}`;
         
-        return `<span class="viewed-badge" style="background-color: ${color};" title="${title}">${CONFIG.VIEWED_TEXT}</span>`;
+        return `<span class="badges badge-viewed" style="background-color: ${color};" title="${title}">${CONFIG.VIEWED_TEXT}</span>`;
+    }
+
+    function createUnseenBadge() {
+        if (!CONFIG.UNSEEN_TEXT) return '';
+        return `<span class="badges badge-unseen" title="${CONFIG.UNSEEN_TITLE}">${CONFIG.UNSEEN_TEXT}</span>`;
     }
 
     function refreshAllViewedBadges() {
@@ -155,7 +160,7 @@
         const maxTime = Math.max(...timestamps);
         
         // Update all existing badges
-        document.querySelectorAll('.viewed-badge-container').forEach(container => {
+        document.querySelectorAll('.badge-container').forEach(container => {
             const rowId = container.dataset.rowId;
             if (viewedData[rowId]) {
                 container.innerHTML = createViewedBadge(viewedData[rowId], minTime, maxTime);
@@ -671,42 +676,26 @@
         result = convertNewlinesToBR(result);
         
         // Pre-process: Unwrap <a> tags that point to YouTube or Images
-        // This fixes the "rogue anchor" issue where GSheets auto-linked the URL
         const anchorRegex = /<a\s+[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi;
         result = result.replace(anchorRegex, (match, href, content) => {
             if (isYouTubeURL(href) || isImageURL(href)) {
-                return href; // Unwrap to plain URL so the next regex can embed it properly
+                return href; 
             }
             return match;
         });
         
-        // Regex to match URLs but capture if they are inside href/src attributes
-        // Group 1: Matches attribute prefix (href=", src=", href=', src=')
-        // Group 2: Matches the URL inside the attribute quotes
-        // Group 3: Matches the closing quote
-        // Group 4: Matches a standalone URL (not inside an attribute)
-        // Note: We optionally match following <br> tags for standalone URLs to prevent double line breaks
-        const urlRegex = /(href="|src="|href='|src=')((?:https?:\/\/)[^"']+)("|')|(https?:\/\/[^\s<]+)((?:\s*<br>|\s)*)/g;
+        // Regex to match URLs and specifically consume the first following <br> if it exists
+        const urlRegex = /(href="|src="|href='|src=')((?:https?:\/\/)[^"']+)("|')|(https?:\/\/[^\s<]+)(\s*<br\s*\/?>)?/g;
         
-        result = result.replace(urlRegex, (match, attrPrefix, urlInAttr, quote, plainUrl, followingContent) => {
-            // If attrPrefix is defined, it means we matched an existing HTML attribute (Group 1)
-            // We should return the whole match unchanged to preserve the existing link/image
-            if (attrPrefix) {
-                return match;
-            }
+        result = result.replace(urlRegex, (match, attrPrefix, urlInAttr, quote, plainUrl, followingBreak) => {
+            // If attrPrefix is defined, it means we matched an existing HTML attribute
+            if (attrPrefix) return match;
             
-            // Standalone URL (Group 4)
+            // Standalone URL
             let url = plainUrl;
             
             // Clean up common Rich Text wrapping tags if they've leaked into the URL string
-            // This happens if GSheets auto-formatted the link and our regex captured the surrounding tags
             url = url.replace(/<\/?[aui]>|&nbsp;/gi, '');
-
-            // Subtract 1 <br> from following content if present
-            let processedFollowing = followingContent || '';
-            if (processedFollowing.includes('<br>')) {
-                processedFollowing = processedFollowing.replace('<br>', '');
-            }
             
             // YouTube Logic: Check for YouTube links to embed
             if (url.includes('youtube.com') || url.includes('youtu.be')) {
@@ -796,26 +785,23 @@
                     
                     if (!isInCell) {
                         const align = CONFIG.YOUTUBE_EMBED_ALIGN || 'right';
-                        // Use !important on alignment to override any legacy Rich Text styles that might be wrapping this
-                        return `</div><div class="accordion-video-container" style="text-align: ${align} !important;">${videoHtml}</div><div>` + processedFollowing;
+                        return `<div class="accordion-video-container" style="text-align: ${align} !important;">${videoHtml}</div>`;
                     }
-                    return videoHtml + processedFollowing;
+                    return videoHtml;
                 }
             }
             
             // Image Logic: Check if the URL is a direct image link
             if (isImageURL(url)) {
-                let imgHtml = '';
                 if (lazyMode) {
-                    imgHtml = generateLazyImagePlaceholder(url, isInCell);
-                } else {
-                    imgHtml = generateImageTag(url, isInCell);
+                    return generateLazyImagePlaceholder(url, isInCell);
                 }
-                return imgHtml + processedFollowing;
+                return generateImageTag(url, isInCell);
             }
             
             // Default: Convert plain URL to clickable link
-            return `<a href="${url}" target="_blank">${url}</a>` + processedFollowing;
+            // For non-embed links, restore the captured break so they stay on their own lines
+            return `<a href="${url}" target="_blank">${url}</a>` + (followingBreak || '');
         });
         
         return result;
@@ -1483,6 +1469,7 @@
 
         // Viewed Status Setup
         const viewedColumnIndex = CONFIG.VIEWED_COLUMN ? columnLetterToIndex(CONFIG.VIEWED_COLUMN) : -1;
+        const lastUpdatedColumnIndex = CONFIG.LAST_UPDATED_COLUMN ? columnLetterToIndex(CONFIG.LAST_UPDATED_COLUMN) : -1;
         const viewedData = loadViewedData();
         const viewedTimestamps = Object.values(viewedData);
         const viewedMinTime = viewedTimestamps.length ? Math.min(...viewedTimestamps) : 0;
@@ -1692,13 +1679,23 @@
                     if (colIndex === viewedColumnIndex) {
                         const rawText = cellValue ? cellValue.replace(/<[^>]*>/g, '').trim() : '';
                         if (rawText && viewedData[rawText]) {
-                            const badge = createViewedBadge(viewedData[rawText], viewedMinTime, viewedMaxTime);
+                            let badges = createViewedBadge(viewedData[rawText], viewedMinTime, viewedMaxTime);
+                            
+                            // Check for Unseen Changes
+                            if (lastUpdatedColumnIndex !== -1) {
+                                const lastUpdatedRaw = (row[lastUpdatedColumnIndex] || '').replace(/<[^>]*>/g, '').trim();
+                                const lastUpdatedTime = new Date(lastUpdatedRaw).getTime();
+                                if (!isNaN(lastUpdatedTime) && lastUpdatedTime > viewedData[rawText]) {
+                                    badges = createUnseenBadge() + badges;
+                                }
+                            }
+                            
                             const rowIdSafe = rawText.replace(/"/g, '"');
-                            linkedValue = `<span class="viewed-badge-container" data-row-id="${rowIdSafe}">${badge}</span>` + linkedValue;
+                            linkedValue = `<span class="badge-container" data-row-id="${rowIdSafe}">${badges}</span>` + linkedValue;
                         } else if (rawText) {
                             // Container for potential future badge
                             const rowIdSafe = rawText.replace(/"/g, '"');
-                            linkedValue = `<span class="viewed-badge-container" data-row-id="${rowIdSafe}"></span>` + linkedValue;
+                            linkedValue = `<span class="badge-container" data-row-id="${rowIdSafe}"></span>` + linkedValue;
                         }
                     }
 
