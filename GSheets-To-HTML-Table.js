@@ -474,14 +474,14 @@
         const className = isInCell ? 'class="accordion-image-content lazy-image-placeholder"' : 'class="lazy-image-placeholder"';
         const placeholderStyle = isInCell ? 'display: block; margin: 0 auto; background: #333; border: 2px dashed #666; border-radius: 4px; text-align: center; color: #999; font-size: 12px; padding: 20px 10px;' : 'background: #333; border: 2px dashed #666; border-radius: var(--answer-image-border-radius); text-align: center; color: #999; font-size: 14px; padding: 40px 20px; margin: 10px 0;';
         
-        return `<div ${className} data-original-url="${imageUrl}" style="${placeholderStyle}" onclick="window.loadLazyImage(this)">📷 Image (Click to load)</div>`;
+        return `<div ${className} data-original-url="${imageUrl}" style="${placeholderStyle}" onclick="window.loadLazyImage(this)">${imageUrl}</div>`;
     }
     
     function generateLazyYouTubePlaceholder(url, videoId, videoTitle, timeParam, playlistParam) {
         const placeholderStyle = 'background: #222; border: 2px dashed #666; border-radius: var(--answer-video-border-radius); text-align: center; color: #999; font-size: 14px; padding: 40px 20px; cursor: pointer;';
         const videoData = encodeURIComponent(JSON.stringify({ url, videoId, timeParam, playlistParam }));
         
-        return `<div class="lazy-youtube-placeholder" data-video-data="${videoData}" style="${placeholderStyle}" onclick="window.loadLazyYouTube(this)">▶️ ${videoTitle} (Click to load)</div>`;
+        return `<div class="lazy-youtube-placeholder" data-video-data="${videoData}" style="${placeholderStyle}" onclick="window.loadLazyYouTube(this)">${url}</div>`;
     }
     
     window.loadLazyImage = function(element) {
@@ -673,7 +673,6 @@
         }
         
         let result = preserveWhitespace(text);
-        result = convertNewlinesToBR(result);
         
         // Pre-process: Unwrap <a> tags that point to YouTube or Images
         const anchorRegex = /<a\s+[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gi;
@@ -684,10 +683,10 @@
             return match;
         });
         
-        // Regex to match URLs and specifically consume the first following <br> if it exists
-        const urlRegex = /(href="|src="|href='|src=')((?:https?:\/\/)[^"']+)("|')|(https?:\/\/[^\s<]+)(\s*<br\s*\/?>)?/g;
+        // Regex to match URLs and specifically capture a following newline (\n or \r\n)
+        const urlRegex = /(href="|src="|href='|src=')((?:https?:\/\/)[^"']+)("|')|(https?:\/\/[^\s<]+)(\r\n|\n)?/g;
         
-        result = result.replace(urlRegex, (match, attrPrefix, urlInAttr, quote, plainUrl, followingBreak) => {
+        result = result.replace(urlRegex, (match, attrPrefix, urlInAttr, quote, plainUrl, followingNewline) => {
             // If attrPrefix is defined, it means we matched an existing HTML attribute
             if (attrPrefix) return match;
             
@@ -698,7 +697,7 @@
             url = url.replace(/<\/?[aui]>|&nbsp;/gi, '');
             
             // YouTube Logic: Check for YouTube links to embed
-            if (url.includes('youtube.com') || url.includes('youtu.be')) {
+            if (isYouTubeURL(url)) {
                 // Skip embedding for root domains
                 if (url === 'https://www.youtube.com' || url === 'https://www.youtube.com/' || 
                     url === 'https://youtube.com' || url === 'https://youtube.com/' ||
@@ -793,17 +792,22 @@
             
             // Image Logic: Check if the URL is a direct image link
             if (isImageURL(url)) {
+                let imgHtml = '';
                 if (lazyMode) {
-                    return generateLazyImagePlaceholder(url, isInCell);
+                    imgHtml = generateLazyImagePlaceholder(url, isInCell);
+                } else {
+                    imgHtml = generateImageTag(url, isInCell);
                 }
-                return generateImageTag(url, isInCell);
+                // Return media HTML but DO NOT restore the newline (pruning it as requested)
+                return imgHtml;
             }
             
             // Default: Convert plain URL to clickable link
-            // For non-embed links, restore the captured break so they stay on their own lines
-            return `<a href="${url}" target="_blank">${url}</a>` + (followingBreak || '');
+            // Restore the newline for standard links so they stay on separate lines
+            return `<a href="${url}" target="_blank">${url}</a>` + (followingNewline || '');
         });
         
+        result = convertNewlinesToBR(result);
         return result;
     }
     
@@ -1731,8 +1735,13 @@
                 
                 if (answer) {
                     const answerPrefix = CONFIG.ANSWER_PREFIX || '';
-                    const processedAnswer = convertURLsToLinks(answer, false, true);
+                    let processedAnswer = convertURLsToLinks(answer, false, true);
                     
+                    // FINAL CLEANUP: Ensure no lingering empty spans or tags remain from rich text runs
+                    processedAnswer = processedAnswer.replace(/<span><\/span>/gi, '');
+                    processedAnswer = processedAnswer.replace(/<u><\/u>/gi, '');
+                    processedAnswer = processedAnswer.replace(/<b><\/b>/gi, '');
+
                     // Get enlarged thumbnail if enabled
                     let enlargedThumbnail = '';
                     if (CONFIG.SHOW_ENLARGED_THUMBNAIL_IN_ANSWER_ROW) {
