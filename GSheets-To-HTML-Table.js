@@ -1,5 +1,31 @@
 (function() {
-    
+    // ============================================
+    // VERSION & CACHE BUSTING (Stealth Play)
+    // ============================================
+    const SCRIPT_VERSION = '{{VERSION}}';
+    const storageKey = 'gsheets_table_version';
+    const lastVersion = localStorage.getItem(storageKey);
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasCacheBust = urlParams.has('v');
+
+    if (SCRIPT_VERSION !== '{{VERSION}}') { // Only run if version has been replaced by GitHub Actions
+        if (lastVersion !== SCRIPT_VERSION) {
+            // First Flip: Version mismatch, reload with cache buster
+            localStorage.setItem(storageKey, SCRIPT_VERSION);
+            urlParams.set('v', Date.now());
+            window.location.search = urlParams.toString();
+            return; // Stop execution
+        } else if (hasCacheBust) {
+            // Second Flip: Versions match but URL is messy, clean it up
+            urlParams.delete('v');
+            const newSearch = urlParams.toString();
+            const newURL = window.location.pathname + (newSearch ? '?' + newSearch : '') + window.location.hash;
+            window.history.replaceState({}, document.title, newURL);
+            // We use replaceState instead of another reload to be even MORE streamlined
+            console.log('[Accordion] Cache busted and URL cleaned stealthily.');
+        }
+    }
+
     // Generate unique instance ID
     const INSTANCE_ID = 'accordion_' + Math.random().toString(36).substr(2, 9);
     console.log('[Accordion] Instance ID:', INSTANCE_ID);
@@ -137,10 +163,9 @@
         const strTime = `${hours}:${minutes}${ampm}`;
         const dateStr = `${year}-${month}-${day} ${strTime}`;
         
-        // Tooltip content
-        const colorLeast = CONFIG.DATE_DOTS_HEAT_MAP.COLOR_LEAST_RECENT;
-        const colorMost = CONFIG.DATE_DOTS_HEAT_MAP.COLOR_MOST_RECENT;
-        const title = `${dateStr}\nLeast Recent BG Color = ${colorLeast}\nMost Recent BG Color = ${colorMost}`;
+        // Tooltip content using CONFIG.VIEWED_TITLE template
+        let title = CONFIG.VIEWED_TITLE || '';
+        title = title.replace('[VIEWED_DATE]', dateStr);
         
         return `<span class="badges badge-viewed" style="background-color: ${color};" title="${title}">${CONFIG.VIEWED_TEXT}</span>`;
     }
@@ -243,23 +268,23 @@
     function interpolateColor(color1, color2, factor) {
         if (arguments.length < 3) factor = 0.5;
         
-        const parse = (c) => {
-            // Support for CSS color names by using a temporary element
-            const temp = document.createElement('div');
-            temp.style.color = c;
-            document.body.appendChild(temp);
-            const style = window.getComputedStyle(temp).color;
-            document.body.removeChild(temp);
-            
-            const match = style.match(/\d+/g);
-            if (match) {
-                return match.map(Number);
+        const parseHex = (hex) => {
+            let r = 0, g = 0, b = 0;
+            hex = hex.replace('#', '');
+            if (hex.length === 3) {
+                r = parseInt(hex[0] + hex[0], 16);
+                g = parseInt(hex[1] + hex[1], 16);
+                b = parseInt(hex[2] + hex[2], 16);
+            } else if (hex.length === 6) {
+                r = parseInt(hex.substring(0, 2), 16);
+                g = parseInt(hex.substring(2, 4), 16);
+                b = parseInt(hex.substring(4, 6), 16);
             }
-            return [0, 0, 0];
+            return [r, g, b];
         };
 
-        const c1 = parse(color1);
-        const c2 = parse(color2);
+        const c1 = parseHex(color1);
+        const c2 = parseHex(color2);
 
         const r = Math.round(c1[0] + factor * (c2[0] - c1[0]));
         const g = Math.round(c1[1] + factor * (c2[1] - c1[1]));
@@ -1658,12 +1683,7 @@
                             const text = temp.textContent || temp.innerText || '';
                             const dotColor = getHeatMapColor(text, dateRange.min, dateRange.max);
                             if (dotColor) {
-                                // Capitalize first letter of color names for title
-                                const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-                                const colorLeast = cap(CONFIG.DATE_DOTS_HEAT_MAP.COLOR_LEAST_RECENT);
-                                const colorMost = cap(CONFIG.DATE_DOTS_HEAT_MAP.COLOR_MOST_RECENT);
-                                const title = `Least Recent Dots = ${colorLeast}&#10;Most Recent Dots = ${colorMost}`;
-                                
+                                const title = CONFIG.DATE_DOTS_HEAT_MAP.TITLE || '';
                                 linkedValue = `<div class="date-cell-wrapper">${linkedValue}<span class="date-dot" style="background-color: ${dotColor}" title="${title}"></span></div>`;
                             }
                         }
@@ -1862,12 +1882,11 @@
                 }
                 
                 // Start Viewed Timer
-                const badgeContainer = item.querySelector('.viewed-badge-container');
+                const badgeContainer = item.querySelector('.badge-container');
                 const rowId = badgeContainer ? badgeContainer.dataset.rowId : null;
                 
                 if (rowId) {
-                    // Normalize HTML entities in ID just in case
-                    const cleanRowId = rowId.replace(/"/g, '"');
+                    const cleanRowId = rowId;
                     
                     if (CONFIG.VIEWED_DELAY > 0) {
                         const timerId = setTimeout(() => {

@@ -11,6 +11,14 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      ##################################
+      - name: Generate Version Timestamp
+        id: version
+        run: echo "timestamp=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
+
+      - name: Replace Version Placeholders
+        run: |
+          sed -i "s/{{VERSION}}/${{ steps.version.outputs.timestamp }}/g" GSheets-To-HTML-Table.js
 
       # Add build steps here if needed, e.g.:
       # - run: npm install && npm run build  # If you have a build process
