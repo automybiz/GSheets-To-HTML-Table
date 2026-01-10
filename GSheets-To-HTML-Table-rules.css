@@ -572,7 +572,7 @@
         color: var(--badge-unseen-font-color);
         background-color: var(--badge-unseen-bg-color);
         border: var(--badge-unseen-border-size) solid var(--badge-unseen-border-color);
-        margin-right: 1px;
+        margin-right: 6px;
     }
     
     .badge-container {

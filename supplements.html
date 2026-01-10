@@ -62,19 +62,21 @@
         LAST_UPDATED_COLUMN: 'F', // Define which column contains the last updated date for each row (e.g., 'Last Updated Date'). Used when determining whether Unseen Changes Badge should be visible or hidden. Leave blank to disable last updated functionality. Date format must be YYYY-MM-DD.
         VIEWED_COLUMN: 'D', // Define which question column contains the viewed status for answers that have been viewed/expanded (e.g., 'Previously Viewed'). Leave blank to disable viewed status.
         VIEWED_TEXT: 'Previously Viewed', // Text to indicate that the item has been previously viewed.
+        VIEWED_TITLE: '[VIEWED_DATE]&#10;Most Recent BG Color = Red&#10;Least Recent BG Color = Blue', // Tooltip title text for the viewed badge. Use the tag [VIEWED_DATE] to insert the viewed date. Leave blank to use no title. (use &#10; for line breaks)
         VIEWED_DELAY: 3, // Delay in seconds before marking an answer as viewed (e.g., 30 = 30 seconds). Set to 0 to mark as viewed immediately when answer is shown.
         UNSEEN_TEXT: 'New', // Text to indicate that the items Last Updated Date is more recent than the Last Viewed Date.
-        UNSEEN_TITLE: 'Unseen Changes! Fresh New Content Added!', // Tooltip title text for the unseen badge. Leave blank to use no title.
+        UNSEEN_TITLE: 'Unseen Changes! Fresh New Content Added!', // Tooltip title text for the unseen badge. Leave blank to use no title. (use &#10; for line breaks)
         SHOW_HIDE_ICON_SVG: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="m5.25 4.5 7.5 7.5-7.5 7.5m6-15 7.5 7.5-7.5 7.5" /></svg>', // SVG tag for the show/hide icon. You can copy SVG code ( <svg ... ><path ... /></svg> ) from sites like heroicons.com. Leave blank and a default chevron will be used.
         SHOW_HIDE_DIRECTION_SHOWN: 'down', // Options: 'down', 'up', 'left', 'right' (direction of the icon when answer is shown)
         SHOW_HIDE_DIRECTION_HIDDEN: 'right', // Options: 'down', 'up', 'left', 'right' (direction of the icon when answer is hidden)
 
         // Date Dots Heat Map Color Configuration
         DATE_DOTS_HEAT_MAP: {
-            ENABLED: 1, // 1 = enabled, 0 = disabled
+            ENABLED: 1,
             DATE_COLUMNS: ['F'], // Column letters that contains the date values
-            COLOR_LEAST_RECENT: 'Blue', // Color for the least recent date
-            COLOR_MOST_RECENT: 'Red',   // Color for the most recent date
+            COLOR_LEAST_RECENT: '#00F', // Color for the oldest date
+            COLOR_MOST_RECENT: '#F00',   // Color for the most recent date
+            TITLE: 'Most Recent Dots = Red&#10;Least Recent Dots = Blue', // Text to display on hover (use &#10; for line breaks)
         },
         
         // Search Configuration
