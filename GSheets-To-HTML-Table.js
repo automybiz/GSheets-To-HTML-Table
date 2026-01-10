@@ -290,10 +290,10 @@
         const g = Math.round(c1[1] + factor * (c2[1] - c1[1]));
         const b = Math.round(c1[2] + factor * (c2[2] - c1[2]));
 
-        // Convert to shorthand hex by taking the first digit of each 2-digit hex value
-        const rh = r.toString(16).padStart(2, '0')[0];
-        const gh = g.toString(16).padStart(2, '0')[0];
-        const bh = b.toString(16).padStart(2, '0')[0];
+        // Convert to full 6-digit hex
+        const rh = r.toString(16).padStart(2, '0');
+        const gh = g.toString(16).padStart(2, '0');
+        const bh = b.toString(16).padStart(2, '0');
 
         return `#${rh}${gh}${bh}`;
     }
