@@ -4,13 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Sheets Data To HTML Table</title>
-    <link rel="stylesheet" href="GSheets-To-HTML-Table-root.css">
-    <link rel="stylesheet" href="GSheets-To-HTML-Table-rules.css">
     <style>
         body {
             background-color: #000;
         }
     </style>
+    
+    <!-- Dynamic Loader with Cache Busting -->
+    <script>
+        (function() {
+            const loader = document.createElement('script');
+            loader.src = 'Cache-Busting-Loader.js?t=' + Date.now();
+            document.head.appendChild(loader);
+        })();
+    </script>
 </head>
 <body>
 
@@ -58,7 +65,7 @@
         VIEWED_DELAY: 3, // Delay in seconds before marking an answer as viewed (e.g., 30 = 30 seconds). Set to 0 to mark as viewed immediately when answer is shown.
         UNSEEN_TEXT: 'New', // Text to indicate that the items Last Updated Date is more recent than the Last Viewed Date.
         UNSEEN_TITLE: 'Unseen Changes! Fresh New Content Added!', // Tooltip title text for the unseen badge. Leave blank to use no title.
-        SHOW_HIDE_ICON_SVG: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="m5.25 4.5 7.5 7.5-7.5 7.5m6-15 7.5 7.5-7.5 7.5" /></svg>', // SVG tag for the show/hide icon. You can copy SVG code from sites like heroicons.com
+        SHOW_HIDE_ICON_SVG: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="m5.25 4.5 7.5 7.5-7.5 7.5m6-15 7.5 7.5-7.5 7.5" /></svg>', // SVG tag for the show/hide icon. You can copy SVG code from sites like heroicons.com. Leave blank and a default chevron will be used.
         SHOW_HIDE_DIRECTION_SHOWN: 'down', // Options: 'down', 'up', 'left', 'right' (direction of the icon when answer is shown)
         SHOW_HIDE_DIRECTION_HIDDEN: 'right', // Options: 'down', 'up', 'left', 'right' (direction of the icon when answer is hidden)
 
@@ -100,7 +107,5 @@
         ] 
     };
     </script>
-    <!-- Be sure and use DEFER when calling the script -->
-    <script DEFER src="GSheets-To-HTML-Table.js"></script>
 </body>
 </html>

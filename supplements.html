@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GSheets To HTML Table - Supplements</title>
-    <link rel="stylesheet" href="GSheets-To-HTML-Table-root.css">
     <style>
         /* Overrides */
         :root {
@@ -12,12 +11,20 @@
             --question-padding-vertical: 0px;   /* No padding wanted around the thumbnails */
         }
     </style>
-    <link rel="stylesheet" href="GSheets-To-HTML-Table-rules.css">
     <style>
         body {
             background-color: #000;
         }
     </style>
+    
+    <!-- Dynamic Loader with Cache Busting -->
+    <script>
+        (function() {
+            const loader = document.createElement('script');
+            loader.src = 'Cache-Busting-Loader.js?t=' + Date.now();
+            document.head.appendChild(loader);
+        })();
+    </script>
 </head>
 <body>
 
@@ -109,7 +116,5 @@
         ] 
     };
     </script>
-    <!-- Be sure and use DEFER when calling the script -->
-    <script DEFER src="GSheets-To-HTML-Table.js"></script>
 </body>
 </html>

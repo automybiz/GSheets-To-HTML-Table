@@ -1,31 +1,4 @@
 (function() {
-    // ============================================
-    // VERSION & CACHE BUSTING (Stealth Play)
-    // ============================================
-    const SCRIPT_VERSION = '{{VERSION}}';
-    const storageKey = 'gsheets_table_version';
-    const lastVersion = localStorage.getItem(storageKey);
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasCacheBust = urlParams.has('v');
-
-    if (SCRIPT_VERSION !== '{{VERSION}}') { // Only run if version has been replaced by GitHub Actions
-        if (lastVersion !== SCRIPT_VERSION) {
-            // First Flip: Version mismatch, reload with cache buster
-            localStorage.setItem(storageKey, SCRIPT_VERSION);
-            urlParams.set('v', Date.now());
-            window.location.search = urlParams.toString();
-            return; // Stop execution
-        } else if (hasCacheBust) {
-            // Second Flip: Versions match but URL is messy, clean it up
-            urlParams.delete('v');
-            const newSearch = urlParams.toString();
-            const newURL = window.location.pathname + (newSearch ? '?' + newSearch : '') + window.location.hash;
-            window.history.replaceState({}, document.title, newURL);
-            // We use replaceState instead of another reload to be even MORE streamlined
-            console.log('[Accordion] Cache busted and URL cleaned stealthily.');
-        }
-    }
-
     // Generate unique instance ID
     const INSTANCE_ID = 'accordion_' + Math.random().toString(36).substr(2, 9);
     console.log('[Accordion] Instance ID:', INSTANCE_ID);
