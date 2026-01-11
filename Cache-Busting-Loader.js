@@ -13,35 +13,49 @@ const LATEST_VERSION = '{{VERSION}}';
         localStorage.setItem(storageKey, LATEST_VERSION);
     }
 
-    // Reference tag for "Insert After" logic
+    // Anchor tags for precise injection
     const configTag = document.getElementById('GSheets-To-HTML-Table-Config');
+    const overridesTag = document.getElementById('GSheets-To-HTML-Table-Overrides');
 
-    // 1. Load Root CSS (Variables)
+    // 1. Root CSS (Variables)
     const rootCSS = document.createElement('link');
     rootCSS.rel = 'stylesheet';
     rootCSS.href = 'https://automybiz.github.io/GSheets-To-HTML-Table/latest/GSheets-To-HTML-Table-root.css' + versionSuffix;
     
-    // 2. Load Rules CSS (Uses Variables)
+    // 2. Rules CSS (Layout/Components)
     const rulesCSS = document.createElement('link');
     rulesCSS.rel = 'stylesheet';
     rulesCSS.href = 'https://automybiz.github.io/GSheets-To-HTML-Table/latest/GSheets-To-HTML-Table-rules.css' + versionSuffix;
 
-    // 3. Load Main JS Logic
+    // 3. Main JS Logic
     const mainJS = document.createElement('script');
     mainJS.src = 'https://automybiz.github.io/GSheets-To-HTML-Table/latest/GSheets-To-HTML-Table.js' + versionSuffix;
     mainJS.defer = true;
 
-    if (configTag) {
-        // Use "Insert After" logic to guarantee execution order
+    // ROGUE SANDWICH LOGIC 🥪
+    if (overridesTag) {
+        // Guarantee: root.css < Overrides < rules.css < main.js
+        // 1. Insert root.css BEFORE overrides
+        overridesTag.insertAdjacentElement('beforebegin', rootCSS);
+        
+        // 2. Insert rules.css AFTER overrides
+        overridesTag.insertAdjacentElement('afterend', rulesCSS);
+        
+        // 3. Insert main.js AFTER rules.css
+        rulesCSS.insertAdjacentElement('afterend', mainJS);
+        
+        console.log('[GSheets-To-HTML-Table] Rogue Sandwich assembled! root.css -> Overrides -> rules.css -> main.js');
+    } else if (configTag) {
+        // Fallback to stacking after config tag
         configTag.insertAdjacentElement('afterend', mainJS);
         configTag.insertAdjacentElement('afterend', rulesCSS);
         configTag.insertAdjacentElement('afterend', rootCSS);
-        console.log('[GSheets-To-HTML-Table] Config tag found, injected scripts immediately after it.');
+        console.warn('[GSheets-To-HTML-Table] Overrides tag not found. Stacking after config tag.');
     } else {
-        // Fallback to head injection if config tag not found (backwards compatibility)
+        // Final fallback to head (backwards compatibility)
         document.head.appendChild(rootCSS);
         document.head.appendChild(rulesCSS);
         document.head.appendChild(mainJS);
-        console.warn('[GSheets-To-HTML-Table] WARNING: Script tag with ID "GSheets-To-HTML-Table-Config" not found. Falling back to <head> injection.');
+        console.warn('[GSheets-To-HTML-Table] No anchor tags found. Falling back to <head> injection.');
     }
 })();

@@ -4,13 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GSheets To HTML Table - Supplements</title>
-    <style>
+    
+    <!-- ROGUE OVERRIDES STYLE TAG WITH ID -->
+    <style id="GSheets-To-HTML-Table-Overrides">
         /* Overrides */
         :root {
             --question-padding-horizontal: 0px; /* No padding needed since thumbnail column is being used */
             --question-padding-vertical: 0px;   /* No padding wanted around the thumbnails */
         }
     </style>
+
     <style>
         body {
             background-color: #000;
@@ -32,8 +35,8 @@
 </head>
 <body>
 
-    <h1>Supplements Example</h1>
-    <p>This page demonstrates the robust initialization and "Insert After" script logic of the ( Cache-Busting-Loader.js ) file.</p>
+    <h1>Supplements Example (Local)</h1>
+    <p>This page demonstrates the "Rogue Sandwich" logic: root.css -> Overrides -> rules.css -> main.js</p>
 
     <div class="accordion-wrapper"></div>
 
@@ -98,8 +101,8 @@
         SHOW_SEARCH_BOX: true,
         SEARCHES_COMMON: ['All', 'Acid', 'Aging', 'Amino Acid', 'Anti-Aging', 'Antioxidant', 'Autophagy', 'BCAA', 'Boron', 'Cacao', 'Carnitine', 'Casein', 'Coffee', 'Collagen', 'Copper', 'Creatine', 'D3', 'Dessert', 'Digestion', 'Fast', 'Fat', 'Flavor', 'Glycine', 'Gum', 'Health', 'Heart', 'Hormone', 'Hunger', 'Immunity', 'Inflammation', 'Joint', 'K2', 'Leucine', 'Liver', 'Longevity', 'Magnesium', 'Matcha', 'Metabolism', 'NAC', 'Nutrition', 'Oil', 'Organic', 'Peptide', 'Performance', 'Pill', 'Polyphenol', 'Protein', 'Recovery', 'Sirtuin', 'Skin', 'Sleep', 'Softgel', 'Stevia', 'Superfood', 'Supplement', 'Sweetener', 'Testosterone', 'Vitamin', 'Whey', 'Xylitol', 'Zinc'],
         SEARCH_PLACEHOLDER: 'Search...',
-        SEARCH_PLACEHOLDER_ANIMATION_SPEED: 222,
-        SEARCH_PLACEHOLDER_ANIMATION_LOOP_DELAY: 2222,
+        SEARCH_PLACE_ANIMATION_SPEED: 222,
+        SEARCH_PLACE_ANIMATION_LOOP_DELAY: 2222,
         
         // Display Configuration
         AUTO_NUMBER_COLUMN: 1,
