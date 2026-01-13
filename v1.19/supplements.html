@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GSheets To HTML Table - Supplements</title>
+    
+    <!-- ROGUE OVERRIDES STYLE TAG WITH ID -->
+    <style id="GSheets-To-HTML-Table-Overrides">
+        /* Overrides */
+        :root {
+            --question-padding-horizontal: 0px; /* No padding needed since thumbnail column is being used */
+            --question-padding-vertical: 0px;   /* No padding wanted around the thumbnails */
+        }
+    </style>
+
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+    </style>
+    
+    <!-- Dynamic Loader with Cache Busting -->
+    <script>
+        (function() {
+            const loader = document.createElement('script');
+            // Use local loader for development
+            loader.src = 'Cache-Busting-Loader.js?t=' + Date.now();
+            document.head.appendChild(loader);
+        })();
+    </script>
+</head>
+<body>
+
+    <h1>Supplements Example (Local)</h1>
+    <p>This page demonstrates the "Rogue Sandwich" logic: root.css -> Overrides -> rules.css -> main.js</p>
+
+    <div class="accordion-wrapper"></div>
+
+    <!-- CONFIG script with specific ID for the loader to find -->
+    <script id="GSheets-To-HTML-Table-Config">
+    // ============================================
+    // CONFIGURATION VARIABLES
+    // ============================================
+    window.CONFIG = {
+        SPREADSHEET_ID: '186etvuSewz3-AkKJWZwe00BAy1ZBkq3nUWg4uQsmpnY',
+        API_KEY: 'AIzaSyCkKOY3psLW59GsNN7PqVMsn7ZEejKFQPE',
+        RANGE: 'Sheet1',
+        STARTING_ROW: 2,
+        HEADER_ROW_NUMBER: 1, 
+        HEADER_CELL_SUPRESSION: ['A','B','C'],
+        USE_CORS_PROXY: false,
+        FETCH_DATA_ON_PAGE_LOAD: true,
+        SEARCH_DELAY_MS: 333,
+        AUTO_REFETCH_DATA_ON_ERROR_DELAY: 1500,
+        
+        // Image Configuration
+        IMAGE_THUMB_MAX_WIDTH: 50,
+        IMAGE_THUMB_MAX_HEIGHT: 50,
+        IMAGE_ANSWER_MAX_WIDTH: 555,
+        IMAGE_ANSWER_MAX_HEIGHT: null,
+        IMAGE_ANSWER_ALIGN: 'center',
+        
+        // Video Configuration
+        YOUTUBE_EMBED_WIDTH: 560,
+        YOUTUBE_EMBED_HEIGHT: 315,
+        YOUTUBE_EMBED_ALIGN: 'center',
+        
+        // Column Configuration
+        COLUMN_WIDTHS: ['51','51','','130'],
+        HEADER_ROW_COLUMNS_ALIGN: ['center','center','center','center'],
+        QUESTION_COLUMNS_ALIGN: ['left','left','left','center'],
+        QUESTION_COLUMNS: ['B','SHOW','D','F'],
+        ANSWER_COLUMN: 'E',
+        URL_COLUMNS: ['C'],
+        LAST_UPDATED_COLUMN: 'F',
+        VIEWED_COLUMN: 'D',
+        VIEWED_TEXT: 'Previously Viewed',
+        VIEWED_TITLE: '[VIEWED_DATE]&#10;Most Recent BG Color = Red&#10;Least Recent BG Color = Blue',
+        VIEWED_DELAY: 3,
+        UNSEEN_TEXT: 'New',
+        UNSEEN_TITLE: 'Unseen Changes! Fresh New Content Added!',
+        SHOW_HIDE_ICON_SVG: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="m5.25 4.5 7.5 7.5-7.5 7.5m6-15 7.5 7.5-7.5 7.5" /></svg>',
+        SHOW_HIDE_DIRECTION_SHOWN: 'down',
+        SHOW_HIDE_DIRECTION_HIDDEN: 'right',
+
+        // Date Dots Heat Map Color Configuration
+        DATE_DOTS_HEAT_MAP: {
+            ENABLED: 1,
+            DATE_COLUMNS: ['F'],
+            COLOR_LEAST_RECENT: '#00F',
+            COLOR_MOST_RECENT: '#F00',
+            TITLE: 'Most Recent Dots = Red&#10;Least Recent Dots = Blue',
+        },
+        
+        // Search Configuration
+        SEARCH_SCOPE: 'single',
+        SHOW_SEARCH_BOX: true,
+        SEARCHES_COMMON: ['All', 'Acid', 'Aging', 'Amino Acid', 'Anti-Aging', 'Antioxidant', 'Autophagy', 'BCAA', 'Boron', 'Cacao', 'Carnitine', 'Casein', 'Coffee', 'Collagen', 'Copper', 'Creatine', 'D3', 'Dessert', 'Digestion', 'Fast', 'Fat', 'Flavor', 'Glycine', 'Gum', 'Health', 'Heart', 'Hormone', 'Hunger', 'Immunity', 'Inflammation', 'Joint', 'K2', 'Leucine', 'Liver', 'Longevity', 'Magnesium', 'Matcha', 'Metabolism', 'NAC', 'Nutrition', 'Oil', 'Organic', 'Peptide', 'Performance', 'Pill', 'Polyphenol', 'Protein', 'Recovery', 'Sirtuin', 'Skin', 'Sleep', 'Softgel', 'Stevia', 'Superfood', 'Supplement', 'Sweetener', 'Testosterone', 'Vitamin', 'Whey', 'Xylitol', 'Zinc'],
+        SEARCH_PLACEHOLDER: 'Search...',
+        SEARCH_PLACE_ANIMATION_SPEED: 222,
+        SEARCH_PLACE_ANIMATION_LOOP_DELAY: 2222,
+        
+        // Display Configuration
+        AUTO_NUMBER_COLUMN: 1,
+        AUTO_NUMBER_COLUMN_WIDTH: 50,
+        QUESTION_PREFIX: '&nbsp;&nbsp;&nbsp;',
+        ANSWER_PREFIX: '',
+		SHOW_ENLARGED_THUMBNAIL_IN_ANSWER_ROW: true,
+        
+        // Animation Configuration
+        ANSWER_TRANSITION_SPEED: 555,
+        ANSWER_TRANSITION_EFFECT: 'snap',
+        ANSWER_TEXT_EFFECT: 'rotate',
+        ANSWER_TEXT_EFFECT_DIRECTION: 'up',
+        ANSWER_TEXT_EFFECT_FADE: 333,
+        
+        // Filter Conditions
+        FILTER_CONDITIONS: [
+            { column: 'A', condition: 'equals', value: 'PUBLIC' },
+        ] 
+    };
+    </script>
+</body>
+</html>
