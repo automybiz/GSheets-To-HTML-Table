@@ -662,48 +662,21 @@
         function convertURLsToLinks(text, isInCell = false, lazyMode = false) {
             if (!text) return '';
             
-            // First check: Is the entire cell just image URL(s)?
-            const directImageUrls = isDirectImageURL(text);
-            if (directImageUrls) {
+            // Special Case: Is it an =IMAGE() formula? (Handled separately as it's a specific GSheets feature)
+            const formulaImageUrls = extractImagesFromCell(text);
+            // We only trigger the early-return for formulas if they are the only thing that would be returned,
+            // or if it's a known =IMAGE formula which GSheets treats as the cell content.
+            if (text.trim().startsWith('=IMAGE') && formulaImageUrls.length > 0) {
                 if (isInCell) {
-                    // For question cells, only use the first image
-                    const firstImageUrl = directImageUrls[0];
-                    if (lazyMode) {
-                        return generateLazyImagePlaceholder(firstImageUrl, isInCell);
-                    }
-                    return generateImageTag(firstImageUrl, isInCell);
+                    const firstImageUrl = formulaImageUrls[0];
+                    return lazyMode ? generateLazyImagePlaceholder(firstImageUrl, isInCell) : generateImageTag(firstImageUrl, isInCell);
                 } else {
-                    // For answer cells, stack all images
-                    return directImageUrls.map(url => {
-                        if (lazyMode) {
-                            return generateLazyImagePlaceholder(url, isInCell);
-                        }
-                        return generateImageTag(url, isInCell);
+                    return formulaImageUrls.map(url => {
+                        return lazyMode ? generateLazyImagePlaceholder(url, isInCell) : generateImageTag(url, isInCell);
                     }).join('');
                 }
             }
-            
-            // Second check: Is it an =IMAGE() formula?
-            const imageUrls = extractImagesFromCell(text);
-            if (imageUrls.length > 0) {
-                if (isInCell) {
-                    // For question cells, only use the first image
-                    const firstImageUrl = imageUrls[0];
-                    if (lazyMode) {
-                        return generateLazyImagePlaceholder(firstImageUrl, isInCell);
-                    }
-                    return generateImageTag(firstImageUrl, isInCell);
-                } else {
-                    // For answer cells, stack all images
-                    return imageUrls.map(url => {
-                        if (lazyMode) {
-                            return generateLazyImagePlaceholder(url, isInCell);
-                        }
-                        return generateImageTag(url, isInCell);
-                    }).join('');
-                }
-            }
-            
+
             let result = preserveWhitespace(text);
             
             // Pre-process: Unwrap <a> tags that point to YouTube or Images
@@ -716,7 +689,8 @@
             });
             
             // Regex to match URLs and specifically capture a following newline (\n or \r\n)
-            const urlRegex = /(href="|src="|href='|src=')((?:https?:\/\/)[^"']+)("|')|(https?:\/\/[^\s<]+)(\r\n|\n)?/g;
+            // Enhanced to handle &nbsp; (don't consume it) and strip trailing punctuation
+            const urlRegex = /(href="|src="|href='|src=')((?:https?:\/\/)[^"']+)("|')|(https?:\/\/(?:[^\s<&]|&(?!nbsp;))+(?:[^\s<&.,?!:;]|\/))(\r\n|\n)?/g;
             
             result = result.replace(urlRegex, (match, attrPrefix, urlInAttr, quote, plainUrl, followingNewline) => {
                 // If attrPrefix is defined, it means we matched an existing HTML attribute
@@ -734,7 +708,7 @@
                     if (url === 'https://www.youtube.com' || url === 'https://www.youtube.com/' || 
                         url === 'https://youtube.com' || url === 'https://youtube.com/' ||
                         url === 'https://youtu.be' || url === 'https://youtu.be/') {
-                        return `<a href="${url}" target="_blank">${url}</a>`;
+                        return `<a href="${url}" target="_blank">${url}</a>` + (followingNewline || '');
                     }
                     
                     let videoId = null;

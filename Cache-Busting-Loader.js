@@ -17,45 +17,52 @@ const LATEST_VERSION = '{{VERSION}}';
     const configTag = document.getElementById('GSheets-To-HTML-Table-Config');
     const overridesTag = document.getElementById('GSheets-To-HTML-Table-Overrides');
 
+    // Determine environment (Local vs Production)
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const baseUrl = isLocal ? '' : 'https://automybiz.github.io/GSheets-To-HTML-Table/latest/';
+
     // 1. Root CSS (Variables)
     const rootCSS = document.createElement('link');
     rootCSS.rel = 'stylesheet';
-    rootCSS.href = 'https://automybiz.github.io/GSheets-To-HTML-Table/latest/GSheets-To-HTML-Table-root.css' + versionSuffix;
+    rootCSS.href = baseUrl + 'GSheets-To-HTML-Table-root.css' + versionSuffix;
     
     // 2. Rules CSS (Layout/Components)
     const rulesCSS = document.createElement('link');
     rulesCSS.rel = 'stylesheet';
-    rulesCSS.href = 'https://automybiz.github.io/GSheets-To-HTML-Table/latest/GSheets-To-HTML-Table-rules.css' + versionSuffix;
+    rulesCSS.href = baseUrl + 'GSheets-To-HTML-Table-rules.css' + versionSuffix;
 
     // 3. Main JS Logic
     const mainJS = document.createElement('script');
-    mainJS.src = 'https://automybiz.github.io/GSheets-To-HTML-Table/latest/GSheets-To-HTML-Table.js' + versionSuffix;
+    mainJS.src = baseUrl + 'GSheets-To-HTML-Table.js' + versionSuffix;
     mainJS.defer = true;
 
     // ROGUE SANDWICH LOGIC 🥪
+    
+    // Handle CSS first (Sandwich your overrides)
     if (overridesTag) {
-        // Guarantee: root.css < Overrides < rules.css < main.js
-        // 1. Insert root.css BEFORE overrides
+        // Guarantee: root.css < Overrides < rules.css
         overridesTag.insertAdjacentElement('beforebegin', rootCSS);
-        
-        // 2. Insert rules.css AFTER overrides
         overridesTag.insertAdjacentElement('afterend', rulesCSS);
-        
-        // 3. Insert main.js AFTER rules.css
-        rulesCSS.insertAdjacentElement('afterend', mainJS);
-        
-        console.log('[GSheets-To-HTML-Table] Rogue Sandwich assembled! root.css -> Overrides -> rules.css -> main.js');
+        console.log('[GSheets-To-HTML-Table] CSS Sandwich assembled! root.css -> Overrides -> rules.css');
     } else if (configTag) {
-        // Fallback to stacking after config tag
-        configTag.insertAdjacentElement('afterend', mainJS);
+        // Fallback for CSS
         configTag.insertAdjacentElement('afterend', rulesCSS);
         configTag.insertAdjacentElement('afterend', rootCSS);
-        console.warn('[GSheets-To-HTML-Table] Overrides tag not found. Stacking after config tag.');
     } else {
-        // Final fallback to head (backwards compatibility)
         document.head.appendChild(rootCSS);
         document.head.appendChild(rulesCSS);
+    }
+
+    // Handle JS separately (Anchor to config for logical DOM order)
+    if (configTag) {
+        // Guarantee: Config < Main JS
+        configTag.insertAdjacentElement('afterend', mainJS);
+        console.log('[GSheets-To-HTML-Table] Main JS anchored after Config tag.');
+    } else if (overridesTag) {
+        // Fallback to overrides tag for JS
+        overridesTag.insertAdjacentElement('afterend', mainJS);
+    } else {
+        // Final fallback for JS
         document.head.appendChild(mainJS);
-        console.warn('[GSheets-To-HTML-Table] No anchor tags found. Falling back to <head> injection.');
     }
 })();
