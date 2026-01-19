@@ -62,6 +62,7 @@
         LAST_UPDATED_COLUMN: 'F', // Define which column contains the last updated date for each row (e.g., 'Last Updated Date'). Used when determining whether Unseen Changes Badge should be visible or hidden. Leave blank to disable last updated functionality. Date format must be YYYY-MM-DD.
         VIEWED_COLUMN: 'B', // Define which question column contains the viewed status for answers that have been viewed/expanded (e.g., 'Previously Viewed'). Leave blank to disable viewed status.
         VIEWED_TEXT: 'Previously Viewed', // Text to indicate that the item has been previously viewed.
+        VIEWED_TITLE: '[VIEWED_DATE]&#10;Most Recent BG Color = Red&#10;Least Recent BG Color = Blue',
         VIEWED_DELAY: 3, // Delay in seconds before marking an answer as viewed (e.g., 30 = 30 seconds). Set to 0 to mark as viewed immediately when answer is shown.
         UNSEEN_TEXT: 'New', // Text to indicate that the items Last Updated Date is more recent than the Last Viewed Date.
         UNSEEN_TITLE: 'Unseen Changes! Fresh New Content Added!', // Tooltip title text for the unseen badge. Leave blank to use no title.
@@ -71,10 +72,11 @@
 
         // Date Dots Heat Map Color Configuration
         DATE_DOTS_HEAT_MAP: {
-            ENABLED: 1, // 1 = enabled, 0 = disabled
+            ENABLED: 1, // 1 = enabled, 0 = disabled. Enable to make the dots appear in the date column cells
             DATE_COLUMNS: ['F'], // Column letters that contains the date values
             COLOR_LEAST_RECENT: 'Blue', // Color for the least recent date
             COLOR_MOST_RECENT: 'Red',   // Color for the most recent date
+            TITLE: 'Most Recent Dots = Red&#10;Least Recent Dots = Blue',
         },
 
         // Search Configuration
@@ -86,7 +88,7 @@
         SEARCH_PLACEHOLDER_ANIMATION_LOOP_DELAY: 2222, // Delay in milliseconds before the placeholder animation loops
         
         // Display Configuration
-        AUTO_NUMBER_COLUMN: 1, // Starting number for auto-numbering rows (set to null to disable)
+        AUTO_NUMBER_COLUMN: 1, // Starting GSheets row number for auto-numbering rows (set to 0 to disable)
         AUTO_NUMBER_COLUMN_WIDTH: 50, // Width in pixels for auto-number column (default: 50)
         //QUESTION_PREFIX: '&nbsp;&nbsp;&nbsp;',
         QUESTION_PREFIX: '<u><b>Question:</b></u>&nbsp;',  // HTML/text prefix for first (text based) question column. Does not apply to URL or Image URL columns. (empty string to disable)

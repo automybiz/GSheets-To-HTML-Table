@@ -1516,7 +1516,6 @@
             let html = '<div class="accordion-container"><table class="accordion-table">';
             
             isFirstDataRow = true;
-            let rowNumber = CONFIG.AUTO_NUMBER_COLUMN;
             
             console.log(`[Accordion] About to process ${data.length} rows in displayAccordion`);
             data.forEach((row, index) => {
@@ -1527,14 +1526,18 @@
                 // We need to account for the fact that index 0 might be the header row 
                 // if we manually inserted it in processData.
                 let isHeaderRow = false;
+                let actualRowNumber;
                 if (CONFIG.HEADER_ROW_NUMBER !== 0) {
                     // If the header row was prepended, index 0 is always the header
                     if (CONFIG.HEADER_ROW_NUMBER < CONFIG.STARTING_ROW) {
                         isHeaderRow = (index === 0);
+                        actualRowNumber = isHeaderRow ? CONFIG.HEADER_ROW_NUMBER : (CONFIG.STARTING_ROW + index - 1);
                     } else {
-                        const actualRowNumber = CONFIG.STARTING_ROW + index;
+                        actualRowNumber = CONFIG.STARTING_ROW + index;
                         isHeaderRow = (actualRowNumber === CONFIG.HEADER_ROW_NUMBER);
                     }
+                } else {
+                    actualRowNumber = CONFIG.STARTING_ROW + index;
                 }
 
                 if (hasQuestionContent || isHeaderRow) {
@@ -1554,7 +1557,14 @@
                     if (hasAutoNumbering) {
                         const autoNumberWidth = CONFIG.AUTO_NUMBER_COLUMN_WIDTH || 50;
                         // If header row, show blank cell. Otherwise show row number.
-                        const cellContent = isHeaderRow ? '' : rowNumber;
+                        // Logic: Start from row CONFIG.AUTO_NUMBER_COLUMN as number 1
+                        let cellContent = '';
+                        if (!isHeaderRow) {
+                            const calculatedNumber = (actualRowNumber - CONFIG.AUTO_NUMBER_COLUMN) + 1;
+                            if (calculatedNumber >= 1) {
+                                cellContent = calculatedNumber;
+                            }
+                        }
                         html += `<td align="center" class="accordion-auto-number-cell" style="width: ${autoNumberWidth}px; max-width: ${autoNumberWidth}px;">${cellContent}</td>`;
                     }
                     
@@ -1805,11 +1815,6 @@
                     
                     html += '</tbody>';
                     isFirstDataRow = false;
-                    
-                    // Only increment row number if this wasn't a header row
-                    if (!isHeaderRow) {
-                        rowNumber++;
-                    }
                 }
             });
             

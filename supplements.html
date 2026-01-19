@@ -89,10 +89,10 @@
 
         // Date Dots Heat Map Color Configuration
         DATE_DOTS_HEAT_MAP: {
-            ENABLED: 1,
-            DATE_COLUMNS: ['F'],
-            COLOR_LEAST_RECENT: '#00F',
-            COLOR_MOST_RECENT: '#F00',
+            ENABLED: 1, // 1 = enabled, 0 = disabled. Enable to make the dots appear in the date column cells
+            DATE_COLUMNS: ['F'], // Column letters that contains the date values
+            COLOR_LEAST_RECENT: '#00F', // Color for the least recent date
+            COLOR_MOST_RECENT: '#F00',  // Color for the most recent date
             TITLE: 'Most Recent Dots = Red&#10;Least Recent Dots = Blue',
         },
         
@@ -105,18 +105,20 @@
         SEARCH_PLACE_ANIMATION_LOOP_DELAY: 2222,
         
         // Display Configuration
-        AUTO_NUMBER_COLUMN: 1,
-        AUTO_NUMBER_COLUMN_WIDTH: 50,
+        AUTO_NUMBER_COLUMN: 5, // Starting GSheets row number for auto-numbering rows (set to 0 to disable)
+        AUTO_NUMBER_COLUMN_WIDTH: 50, // Width in pixels for auto-number column (default: 50)
         QUESTION_PREFIX: '&nbsp;&nbsp;&nbsp;',
+        //QUESTION_PREFIX: '<u><b>Question:</b></u>&nbsp;',  // HTML/text prefix for first (text based) question column. Does not apply to URL or Image URL columns. (empty string to disable)
         ANSWER_PREFIX: '',
+        //ANSWER_PREFIX: '<u><b>Answer:</b></u><br>', // HTML/text to show before answer content (empty string to disable)
 		SHOW_ENLARGED_THUMBNAIL_IN_ANSWER_ROW: true,
         
         // Animation Configuration
-        ANSWER_TRANSITION_SPEED: 555,
-        ANSWER_TRANSITION_EFFECT: 'snap',
-        ANSWER_TEXT_EFFECT: 'rotate',
-        ANSWER_TEXT_EFFECT_DIRECTION: 'up',
-        ANSWER_TEXT_EFFECT_FADE: 333,
+        ANSWER_TRANSITION_SPEED: 555, // Transition speed in milliseconds (e.g., 200, 400, 600, 800)
+        ANSWER_TRANSITION_EFFECT: 'snap', // Options: 'smooth', 'ease-in', 'ease-out', 'bounce', 'snap'
+        ANSWER_TEXT_EFFECT: 'rotate', // Options: 'none', 'slide', 'bounce', 'zoom', 'fade', 'blur', 'rotate', 'elastic'
+        ANSWER_TEXT_EFFECT_DIRECTION: 'up', // Options: 'left', 'right', 'up', 'down' (only for slide/bounce)
+        ANSWER_TEXT_EFFECT_FADE: 333, // Fade-in duration in milliseconds (0 to disable)
         
         // Filter Conditions
         FILTER_CONDITIONS: [
