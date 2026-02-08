@@ -61,9 +61,10 @@
             >
         ` : '';
         
-        // Create common searches HTML if enabled
-        const commonSearchesHTML = CONFIG.SEARCHES_COMMON && CONFIG.SEARCHES_COMMON.length > 0 ? `
-            <span class="text-no-background"></span> <div class="accordion-common-searches">
+        // Create common searches HTML if enabled and search box is shown
+        const hasMeaningfulSearches = CONFIG.SEARCHES_COMMON && CONFIG.SEARCHES_COMMON.some(term => term && term.trim() !== '' && term.trim() !== 'All');
+        const commonSearchesHTML = (CONFIG.SHOW_SEARCH_BOX && hasMeaningfulSearches) ? `
+            <div class="accordion-common-searches">
                 ${CONFIG.SEARCHES_COMMON.map(term => 
                     `<span class="accordion-common-search-item" onclick="window.setSearch_${INSTANCE_ID}('${term}')">${term}</span>`
                 ).join('')}
