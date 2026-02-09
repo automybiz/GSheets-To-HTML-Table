@@ -40,7 +40,7 @@
 
         /* Layout */
         --accordion-spacing: 0px;
-        --border-radius: 8px;
+        --border-radius: 8px; /* Rounded Table Corners */
         --question-padding-horizontal: 11px; /* 11px does pretty well by default */
         --question-padding-vertical: 6px;    /* 6px does pretty well by default */
         --answer-padding-left: 22px;

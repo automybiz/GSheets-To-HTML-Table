@@ -71,9 +71,13 @@
     
     .accordion-table {
         width: 100%;
-        border-collapse: collapse;
+        border-collapse: separate;
+        border-spacing: 0;
         font-family: var(--question-font-family);
         font-size: var(--question-font-size);
+        border: 1px solid var(--question-border-color);
+        border-radius: var(--border-radius);
+        overflow: hidden;
     }
     
     .accordion-question-row {
@@ -142,13 +146,13 @@
     
     .accordion-question-row td {
         padding: var(--question-padding-vertical) var(--question-padding-horizontal);
-        border: 1px solid var(--question-border-color);
-        border-top: none; /* Prevent double borders between rows */
+        border-bottom: 1px solid var(--question-border-color);
+        border-right: 1px solid var(--question-border-color);
     }
 
-    /* Restore top border for the first visible item */
-    .accordion-question-row.first-visible-row td {
-        border-top: 1px solid var(--question-border-color);
+    /* Remove right border on the last cell of each row */
+    .accordion-question-row td:last-child {
+        border-right: none;
     }
 
     /* Ensure thumbnail cells have no padding */
@@ -242,29 +246,29 @@
         object-fit: fill; /* Match the stretch request */
     }
     
-    /* First item top-left corner */
+    /* Apply rounding to the first visible row's top corners */
     .accordion-question-row.first-visible-row td:first-child {
         border-top-left-radius: var(--border-radius);
     }
-    
-    /* First item top-right corner */
     .accordion-question-row.first-visible-row td:last-child {
         border-top-right-radius: var(--border-radius);
     }
-    
-    /* Last item bottom corners - for rows WITHOUT answers */
-    .accordion-item:last-child .accordion-question-row.no-answer td:first-child {
+
+    /* Apply rounding to the last visible item's bottom corners */
+    .last-visible-item .accordion-question-row.no-answer td:first-child,
+    .last-visible-item .accordion-answer-row .accordion-answer-cell {
         border-bottom-left-radius: var(--border-radius);
     }
-    
-    .accordion-item:last-child .accordion-question-row.no-answer td:last-child {
+    .last-visible-item .accordion-question-row.no-answer td:last-child,
+    .last-visible-item .accordion-answer-row .accordion-answer-cell {
         border-bottom-right-radius: var(--border-radius);
     }
-    
-    /* Last item bottom corners - for answer cells */
-    .accordion-item:last-child .accordion-answer-cell {
-        border-bottom-left-radius: var(--border-radius);
-        border-bottom-right-radius: var(--border-radius);
+
+    /* Remove bottom border on the very last row (handled by table container) */
+    .last-visible-item .accordion-question-row.no-answer td,
+    .last-visible-item:not(.active) .accordion-question-row td,
+    .last-visible-item .accordion-answer-row .accordion-answer-cell {
+        border-bottom: none;
     }
     
     .accordion-answer-row {
@@ -274,13 +278,12 @@
     
     .accordion-answer-cell {
         padding: 0;
-        border: 1px solid var(--question-border-color);
-        border-top: none;
+        border-bottom: 1px solid var(--question-border-color);
     }
     
     /* Hide answer cell border when collapsed */
     .accordion-item:not(.active) .accordion-answer-cell {
-        border: none;
+        border-bottom: none;
     }
     
     .accordion-answer-wrapper {
