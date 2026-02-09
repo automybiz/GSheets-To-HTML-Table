@@ -1,0 +1,93 @@
+    /* ============================================ 
+       ACCORDION CSS VARIABLES
+       ============================================ */
+    :root {
+        /* Question Styling */
+        --question-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --question-font-size: 16px;
+        --question-font-color: #FFF;
+        --question-link-color: #0FF;
+        --question-bg-color: #022;
+        --question-border-color: #099;
+        
+        /* Question Hover Styling */
+        --question-hover-font-color: #FFF;
+        --question-hover-bg-color: #033;
+        
+        /* Answer Styling */
+        --answer-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --answer-font-size: 13px;
+        --answer-font-color: #FFF;
+        --answer-bg-color: #101;
+        
+        /* Answer Media Styling */
+        --answer-image-border-size: 1px;
+        --answer-image-border-color: #0FF;
+        --answer-image-border-radius: 8px;
+        --answer-video-border-size: 1px;
+        --answer-video-border-color: #0FF;
+        --answer-video-border-radius: 8px;
+        
+        /* Answer Media Enlarged Thumbnail Styling */
+        --answer-image-big-thumb-border-size: 0px;
+        --answer-image-big-thumb-border-color: #F00;
+        --answer-image-big-thumb-border-radius: 18px;
+
+        /* Opacity Styling */
+        --question-bg-opacity-when-answer-shown: 0.2;
+        --question-bg-opacity-when-answer-hidden: 0.8;
+        --answer-bg-opacity: 0.8;
+
+        /* Layout */
+        --accordion-spacing: 0px;
+        --border-radius: 8px; /* Rounded Table Corners */
+        --question-padding-horizontal: 11px; /* 11px does pretty well by default */
+        --question-padding-vertical: 6px;    /* 6px does pretty well by default */
+        --answer-padding-left: 22px;
+        --answer-padding-right: 22px;
+        --answer-padding-top: 11px;
+        --answer-padding-bottom: 11px;
+        --auto-number-column-width: 30px;
+        --show-hide-icon-size: 33px;
+        --show-hide-icon-color: #FFF;
+        
+        /* Alternating Row Colors */
+        --row-even-bg-color: #011;
+        --row-odd-bg-color: #022;
+        
+        /* Search Input Styling */
+        --search-font-color: #FFF;
+        --search-bg-color: #011;
+        --search-border-color: #099;
+        --search-border-radius: 8px;
+        --search-font-size: 16px;
+        --search-padding-vertical: 6px;
+        --search-padding-horizontal: 11px;
+        --search-width: 333px;
+        --search-margin-bottom: 6px;
+        
+        --search-highlight-bg-color: transparent;
+        --search-highlight-text-color: #0FF;
+        --common-search-spacing: 5px;
+        
+        --text-no-background-size: 20px;
+        --text-no-background-color: #FFF;
+
+        /* Badge Styling */
+        --badge-padding-horizontal: 6px;
+        --badge-padding-vertical: 2px;
+        --badge-font-size: 11px;
+        --badge-border-radius: 4px;
+
+        --badge-viewed-font-color: #FFF;
+        --badge-viewed-border-size: 0px;
+        --badge-viewed-border-color: #0FF;
+/* Note: --badge-viewed-bg-color IS Missing On Purpose!  */
+/* Because It's Colored With A Dynamically Generated Head Map! */
+
+        --badge-unseen-font-color: #000;
+        --badge-unseen-border-color: #FFF;
+        --badge-unseen-border-size: 0px;
+        --badge-unseen-bg-color: #0F0;
+
+    }
