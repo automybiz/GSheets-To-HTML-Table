@@ -35,7 +35,7 @@
 </head>
 <body>
 
-    <h1>Supplements Example (Local)</h1>
+    <h1>Health Supplements Example (Local)</h1>
     <p>This page demonstrates the "Rogue Sandwich" logic: root.css -> Overrides -> rules.css -> main.js</p>
 
     <div class="accordion-wrapper"></div>
@@ -86,6 +86,8 @@
         SHOW_HIDE_ICON_SVG: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="m5.25 4.5 7.5 7.5-7.5 7.5m6-15 7.5 7.5-7.5 7.5" /></svg>',
         SHOW_HIDE_DIRECTION_SHOWN: 'down',
         SHOW_HIDE_DIRECTION_HIDDEN: 'right',
+        SHOW_HIDE_ON_PAGE_LOAD: 'hide>1', // Options: 'show', 'show#1', 'show>1', 'hide', 'hide>1', 'random'. 'show' will show all answers on page load. 'show#1' will show the number of the row's answer and hide the rest on page load (e.g., 'show#11' will show row number 11). 'show>[Number]' will show rows greater than that [Number] on a page (e.g., if set to 'show>2' then the first 2 rows will be hidden and all remaining rows will be shown). 'hide' will hide all answers on page load. 'hide>[Number]' will hide rows if there's more rows present greater than the specified [Number]... e.g., if someone sets it to 'hide>2' then it will hide all rows when there are more than 2 rows present... if there are only 2 or 1 row present then they will be shown. 'random' will randomly show/hide each row's answer on page load.
+        SHOW_GET_VAR_NAME: 'show', // URL get variable name to trigger showing an answer row on page load. For example, if set to 'show', then adding '?show=11' to the end of the URL will show the answer row for row 11 on page load.
 
         // Date Dots Heat Map Color Configuration
         DATE_DOTS_HEAT_MAP: {
@@ -99,7 +101,7 @@
         // Search Configuration
         SEARCH_SCOPE: 'single',
         SHOW_SEARCH_BOX: true,
-        SEARCHES_COMMON: [''],
+        SEARCHES_COMMON: ['All', 'Acid', 'Aging', 'Amino Acid', 'Anti-Aging', 'Antioxidant', 'Autophagy', 'BCAA', 'Boron', 'Cacao', 'Carnitine', 'Casein', 'Coffee', 'Collagen', 'Copper', 'Creatine', 'D3', 'Dessert', 'Detox', 'Digestion', 'Fast', 'Fat', 'Flavor', 'Glycine', 'Gum', 'Health', 'Heart', 'Hormone', 'Hunger', 'Immunity', 'Inflammation', 'Joint', 'K2', 'Leucine', 'Liver', 'Longevity', 'Magnesium', 'Matcha', 'Metabolism', 'Muscle', 'NAC', 'Nutrition', 'Oil', 'Organic', 'Oxalate', 'Peptide', 'Performance', 'Pill', 'Polyphenol', 'Protein', 'Recovery', 'Sirtuin', 'Skin', 'Sleep', 'Softgel', 'Stevia', 'Superfood', 'Supplement', 'Sweetener', 'Testosterone', 'Vitamin', 'Whey', 'Xylitol', 'Zinc'],
         SEARCH_PLACEHOLDER: 'Search...',
         SEARCH_PLACE_ANIMATION_SPEED: 222,
         SEARCH_PLACE_ANIMATION_LOOP_DELAY: 2222,

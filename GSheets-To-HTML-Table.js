@@ -1691,8 +1691,8 @@
 
                         const alignment = alignmentToUse[i] || 'left';
                         
-                        // Add Viewed Badge if applicable
-                        if (colIndex === viewedColumnIndex) {
+                        // Add Viewed Badge if applicable (Data rows only)
+                        if (colIndex === viewedColumnIndex && !isHeaderRow) {
                             const rawText = cellValue ? cellValue.replace(/<[^>]*>/g, '').trim() : '';
                             if (rawText && viewedData[rawText]) {
                                 let badges = createViewedBadge(viewedData[rawText], viewedMinTime, viewedMaxTime);
@@ -1833,12 +1833,90 @@
         
             // Apply alternating row colors on initial display
             applyAlternatingRowColors();
-            
+
+            // ============================================
+            // INITIAL ROW DISPLAY (SHOW/HIDE ON LOAD)
+            // ============================================
+            let initialSetting = (CONFIG.SHOW_HIDE_ON_PAGE_LOAD || 'hide').toLowerCase();
+
+            // Support for URL GET parameter (e.g., ?show=Intro)
+            const getVarName = CONFIG.SHOW_GET_VAR_NAME || 'show';
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has(getVarName)) {
+                const paramValue = urlParams.get(getVarName).toLowerCase();
+                // If the parameter is a number, treat it as relative index (show#N)
+                if (!isNaN(paramValue) && paramValue.trim() !== '') {
+                    initialSetting = 'show#' + paramValue;
+                } else if (['show', 'hide', 'random'].includes(paramValue)) {
+                    initialSetting = paramValue;
+                } else {
+                    // Otherwise treat as substring match
+                    initialSetting = 'show=' + paramValue;
+                }
+            }
+
+            if (initialSetting !== 'hide') {
+                const items = content.querySelectorAll('.accordion-item');
+                const dataItems = [];
+                
+                // Collect only actual data items (not header rows, and must have an answer)
+                items.forEach((item, idx) => {
+                    const qRow = item.querySelector('.accordion-question-row');
+                    const hasAnswer = qRow && !qRow.classList.contains('no-answer');
+                    if (hasAnswer) {
+                        // Store question text content for substring matching
+                        const questionText = qRow ? qRow.textContent.toLowerCase() : '';
+                        dataItems.push({ element: item, index: idx, questionText: questionText });
+                    }
+                });
+
+                if (initialSetting === 'show') {
+                    dataItems.forEach(itemObj => {
+                        window['toggleAccordion_' + INSTANCE_ID](null, itemObj.index);
+                    });
+                } else if (initialSetting.startsWith('show#')) {
+                    const targetIdx = parseInt(initialSetting.split('#')[1]) - 1; // 1-based to 0-based
+                    if (!isNaN(targetIdx) && dataItems[targetIdx]) {
+                        window['toggleAccordion_' + INSTANCE_ID](null, dataItems[targetIdx].index);
+                    }
+                } else if (initialSetting.startsWith('show>')) {
+                    const offset = parseInt(initialSetting.split('>')[1]);
+                    if (!isNaN(offset)) {
+                        dataItems.forEach((itemObj, idx) => {
+                            if ((idx + 1) > offset) {
+                                window['toggleAccordion_' + INSTANCE_ID](null, itemObj.index);
+                            }
+                        });
+                    }
+                } else if (initialSetting.startsWith('show=')) {
+                    const substring = initialSetting.split('=')[1];
+                    if (substring) {
+                        dataItems.forEach(itemObj => {
+                            if (itemObj.questionText.includes(substring)) {
+                                window['toggleAccordion_' + INSTANCE_ID](null, itemObj.index);
+                            }
+                        });
+                    }
+                } else if (initialSetting.startsWith('hide>')) {
+                    const threshold = parseInt(initialSetting.split('>')[1]);
+                    if (!isNaN(threshold) && dataItems.length <= threshold) {
+                        dataItems.forEach(itemObj => {
+                            window['toggleAccordion_' + INSTANCE_ID](null, itemObj.index);
+                        });
+                    }
+                } else if (initialSetting === 'random') {
+                    if (dataItems.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * dataItems.length);
+                        window['toggleAccordion_' + INSTANCE_ID](null, dataItems[randomIndex].index);
+                    }
+                }
+            }
+        
             console.log('[Accordion] Display complete');
         }
         
         window['toggleAccordion_' + INSTANCE_ID] = function(event, index) {
-            if (event.target.tagName === 'A' || event.target.closest('a')) {
+            if (event && (event.target.tagName === 'A' || event.target.closest('a'))) {
                 return;
             }
             
@@ -1872,6 +1950,9 @@
                     const badgeContainer = item.querySelector('.badge-container');
                     const rowId = badgeContainer ? badgeContainer.dataset.rowId : null;
                     
+                    // Process Lazy Content (YouTube, Images)
+                    processLazyContent(item);
+
                     if (rowId) {
                         const cleanRowId = rowId;
                         
