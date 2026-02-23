@@ -111,6 +111,17 @@
         // ============================================
         // UTILITY FUNCTIONS
         // ============================================
+        function getUrlParam(name) {
+            // Standard approach
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has(name)) return urlParams.get(name);
+
+            // Fallback for file:// URLs where .search might be empty
+            const href = window.location.href;
+            const paramMatch = new RegExp('[?&]' + name + '=([^&#]*)', 'i').exec(href);
+            return paramMatch ? decodeURIComponent(paramMatch[1]) : null;
+        }
+
         function columnLetterToIndex(letter) {
             if (letter === 'SHOW') return 'SHOW';
             return letter.toUpperCase().charCodeAt(0) - 65;
@@ -1841,9 +1852,10 @@
 
             // Support for URL GET parameter (e.g., ?show=Intro)
             const getVarName = CONFIG.SHOW_GET_VAR_NAME || 'show';
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has(getVarName)) {
-                const paramValue = urlParams.get(getVarName).toLowerCase();
+            const showParamValue = getUrlParam(getVarName);
+            
+            if (showParamValue) {
+                const paramValue = showParamValue.toLowerCase();
                 // If the parameter is a number, treat it as relative index (show#N)
                 if (!isNaN(paramValue) && paramValue.trim() !== '') {
                     initialSetting = 'show#' + paramValue;
@@ -1910,6 +1922,16 @@
                         window['toggleAccordion_' + INSTANCE_ID](null, dataItems[randomIndex].index);
                     }
                 }
+            }
+
+            // ============================================
+            // INITIAL SEARCH (SEARCH ON LOAD)
+            // ============================================
+            const searchVarName = CONFIG.SEARCH_GET_VAR_NAME || 'search';
+            const searchParamValue = getUrlParam(searchVarName);
+            if (searchParamValue) {
+                // Trigger search using the existing window function
+                window['setSearch_' + INSTANCE_ID](searchParamValue);
             }
         
             console.log('[Accordion] Display complete');

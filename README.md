@@ -56,6 +56,8 @@ A lightweight, highly configurable JavaScript library that transforms Google She
 - **URL Parameter Sharing**: Link directly to specific answers using URL parameters (e.g., '?show=Intro'). The script intelligently detects whether you are searching by index, keyword, or substring.
 - **Dynamic Parameter Naming**: Customize the URL variable name using 'SHOW_GET_VAR_NAME' to avoid conflicts with other scripts on your site.
     - *Example*: Setting SHOW_GET_VAR_NAME: 'expand' or 'row' allows you to link to specific answers using 'yourpage.html?expand=Intro' or 'yourpage.html?row=Intro' instead of the default '?show=Intro'.
+- **Automatic Search Trigger**: Automatically filter the table on page load by providing a search query in the URL.
+    - *Example*: Setting SEARCH_GET_VAR_NAME: 'query' allows you to filter the table using 'supplements.html?query=coffee'.
 - **Immediate Media Loading**: Programmatically expanded rows automatically trigger lazy-loading for YouTube embeds and images, ensuring they appear immediately on page load.
 
 ## 📁 Project Structure
