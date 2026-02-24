@@ -126,6 +126,85 @@
             if (letter === 'SHOW') return 'SHOW';
             return letter.toUpperCase().charCodeAt(0) - 65;
         }
+
+        function applyExpansionSettings(setting, items = null) {
+            if (!setting || setting === 'hide') return;
+
+            const content = document.getElementById(INSTANCE_ID + '-content');
+            if (!content) return;
+
+            // If items not provided, query all items in this instance
+            if (!items) {
+                items = content.querySelectorAll('.accordion-item');
+            }
+
+            const dataItems = [];
+            // Collect only visible data items (not header rows, must have an answer, and not hidden by search)
+            items.forEach((item, idx) => {
+                const qRow = item.querySelector('.accordion-question-row');
+                const isHidden = item.classList.contains('hidden');
+                const hasAnswer = qRow && !qRow.classList.contains('no-answer');
+                
+                if (hasAnswer && !isHidden) {
+                    dataItems.push({ element: item, index: idx });
+                }
+            });
+
+            if (setting === 'show') {
+                dataItems.forEach(itemObj => {
+                    if (!itemObj.element.classList.contains('active')) {
+                        window['toggleAccordion_' + INSTANCE_ID](null, itemObj.index);
+                    }
+                });
+            } else if (setting.startsWith('show#')) {
+                const targetRelativeIndex = parseInt(setting.split('#')[1]) - 1;
+                if (!isNaN(targetRelativeIndex) && dataItems[targetRelativeIndex]) {
+                    if (!dataItems[targetRelativeIndex].element.classList.contains('active')) {
+                        window['toggleAccordion_' + INSTANCE_ID](null, dataItems[targetRelativeIndex].index);
+                    }
+                }
+            } else if (setting.startsWith('show>')) {
+                const offset = parseInt(setting.split('>')[1]);
+                if (!isNaN(offset)) {
+                    dataItems.forEach((itemObj, idx) => {
+                        if ((idx + 1) > offset) {
+                            if (!itemObj.element.classList.contains('active')) {
+                                window['toggleAccordion_' + INSTANCE_ID](null, itemObj.index);
+                            }
+                        }
+                    });
+                }
+            } else if (setting.startsWith('show=')) {
+                const substring = setting.split('=')[1];
+                if (substring) {
+                    dataItems.forEach(itemObj => {
+                        const qRow = itemObj.element.querySelector('.accordion-question-row');
+                        const questionText = qRow ? qRow.textContent.toLowerCase() : '';
+                        if (questionText.includes(substring.toLowerCase())) {
+                            if (!itemObj.element.classList.contains('active')) {
+                                window['toggleAccordion_' + INSTANCE_ID](null, itemObj.index);
+                            }
+                        }
+                    });
+                }
+            } else if (setting.startsWith('hide>')) {
+                const threshold = parseInt(setting.split('>')[1]);
+                if (!isNaN(threshold) && dataItems.length <= threshold) {
+                    dataItems.forEach(itemObj => {
+                        if (!itemObj.element.classList.contains('active')) {
+                            window['toggleAccordion_' + INSTANCE_ID](null, itemObj.index);
+                        }
+                    });
+                }
+            } else if (setting === 'random') {
+                if (dataItems.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * dataItems.length);
+                    if (!dataItems[randomIndex].element.classList.contains('active')) {
+                        window['toggleAccordion_' + INSTANCE_ID](null, dataItems[randomIndex].index);
+                    }
+                }
+            }
+        }
         
         function getQuestionColumnIndices() {
             return CONFIG.QUESTION_COLUMNS.map(col => columnLetterToIndex(col));
@@ -989,6 +1068,12 @@
         
             // Re-apply alternating row colors
             applyAlternatingRowColors();
+
+            // Re-apply expansion settings based on new visible rows
+            const expansionSetting = wrapper.dataset.expansionSetting;
+            if (expansionSetting) {
+                applyExpansionSettings(expansionSetting, items);
+            }
         
             const existingMessage = document.querySelector('#' + INSTANCE_ID + '-content .no-results-message');
             if (existingMessage) {
@@ -1848,7 +1933,7 @@
             // ============================================
             // INITIAL ROW DISPLAY (SHOW/HIDE ON LOAD)
             // ============================================
-            let initialSetting = (CONFIG.SHOW_HIDE_ON_PAGE_LOAD || 'hide').toLowerCase();
+            let effectiveSetting = (CONFIG.SHOW_HIDE_ON_PAGE_LOAD || 'hide').toLowerCase();
 
             // Support for URL GET parameter (e.g., ?show=Intro)
             const getVarName = CONFIG.SHOW_GET_VAR_NAME || 'show';
@@ -1858,70 +1943,20 @@
                 const paramValue = showParamValue.toLowerCase();
                 // If the parameter is a number, treat it as relative index (show#N)
                 if (!isNaN(paramValue) && paramValue.trim() !== '') {
-                    initialSetting = 'show#' + paramValue;
+                    effectiveSetting = 'show#' + paramValue;
                 } else if (['show', 'hide', 'random'].includes(paramValue)) {
-                    initialSetting = paramValue;
+                    effectiveSetting = paramValue;
                 } else {
                     // Otherwise treat as substring match
-                    initialSetting = 'show=' + paramValue;
+                    effectiveSetting = 'show=' + paramValue;
                 }
             }
 
-            if (initialSetting !== 'hide') {
-                const items = content.querySelectorAll('.accordion-item');
-                const dataItems = [];
-                
-                // Collect only actual data items (not header rows, and must have an answer)
-                items.forEach((item, idx) => {
-                    const qRow = item.querySelector('.accordion-question-row');
-                    const hasAnswer = qRow && !qRow.classList.contains('no-answer');
-                    if (hasAnswer) {
-                        // Store question text content for substring matching
-                        const questionText = qRow ? qRow.textContent.toLowerCase() : '';
-                        dataItems.push({ element: item, index: idx, questionText: questionText });
-                    }
-                });
+            // Store the effective setting on the wrapper so search can reuse it
+            wrapper.dataset.expansionSetting = effectiveSetting;
 
-                if (initialSetting === 'show') {
-                    dataItems.forEach(itemObj => {
-                        window['toggleAccordion_' + INSTANCE_ID](null, itemObj.index);
-                    });
-                } else if (initialSetting.startsWith('show#')) {
-                    const targetIdx = parseInt(initialSetting.split('#')[1]) - 1; // 1-based to 0-based
-                    if (!isNaN(targetIdx) && dataItems[targetIdx]) {
-                        window['toggleAccordion_' + INSTANCE_ID](null, dataItems[targetIdx].index);
-                    }
-                } else if (initialSetting.startsWith('show>')) {
-                    const offset = parseInt(initialSetting.split('>')[1]);
-                    if (!isNaN(offset)) {
-                        dataItems.forEach((itemObj, idx) => {
-                            if ((idx + 1) > offset) {
-                                window['toggleAccordion_' + INSTANCE_ID](null, itemObj.index);
-                            }
-                        });
-                    }
-                } else if (initialSetting.startsWith('show=')) {
-                    const substring = initialSetting.split('=')[1];
-                    if (substring) {
-                        dataItems.forEach(itemObj => {
-                            if (itemObj.questionText.includes(substring)) {
-                                window['toggleAccordion_' + INSTANCE_ID](null, itemObj.index);
-                            }
-                        });
-                    }
-                } else if (initialSetting.startsWith('hide>')) {
-                    const threshold = parseInt(initialSetting.split('>')[1]);
-                    if (!isNaN(threshold) && dataItems.length <= threshold) {
-                        dataItems.forEach(itemObj => {
-                            window['toggleAccordion_' + INSTANCE_ID](null, itemObj.index);
-                        });
-                    }
-                } else if (initialSetting === 'random') {
-                    if (dataItems.length > 0) {
-                        const randomIndex = Math.floor(Math.random() * dataItems.length);
-                        window['toggleAccordion_' + INSTANCE_ID](null, dataItems[randomIndex].index);
-                    }
-                }
+            if (effectiveSetting !== 'hide') {
+                applyExpansionSettings(effectiveSetting);
             }
 
             // ============================================
