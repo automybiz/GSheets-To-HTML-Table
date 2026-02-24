@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GSheets To HTML Table - Supplements</title>
+    
+    <!-- ROGUE OVERRIDES STYLE TAG WITH ID -->
+    <style id="GSheets-To-HTML-Table-Overrides">
+        /* Overrides */
+        :root {
+            --question-padding-horizontal: 0px; /* No padding needed since thumbnail column is being used */
+            --question-padding-vertical: 0px;   /* No padding wanted around the thumbnails */
+        }
+    </style>
+
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+    </style>
+    
+    <!-- Dynamic Loader with Cache Busting -->
+    <script>
+        (function() {
+            const loader = document.createElement('script');
+            // Use local loader for development
+            loader.src = 'Cache-Busting-Loader.js?t=' + Date.now();
+            document.head.appendChild(loader);
+        })();
+    </script>
+</head>
+<body>
+
+    <h1>Health Supplements Example (Local)</h1>
+    <p>This page demonstrates the "Rogue Sandwich" logic: root.css -> Overrides -> rules.css -> main.js</p>
+
+    <div class="accordion-wrapper"></div>
+
+    <!-- CONFIG script with specific ID for the loader to find -->
+    <script id="GSheets-To-HTML-Table-Config">
+    // ============================================
+    // CONFIGURATION VARIABLES
+    // ============================================
+    window.CONFIG = {
+        SPREADSHEET_ID: '186etvuSewz3-AkKJWZwe00BAy1ZBkq3nUWg4uQsmpnY',
+        API_KEY: 'AIzaSyCkKOY3psLW59GsNN7PqVMsn7ZEejKFQPE',
+        RANGE: 'Sheet1',
+        STARTING_ROW: 2,
+        HEADER_ROW_NUMBER: 1, // Set to 0 to hide headers, otherwise set to the spreadsheet row number to keep headers visible (e.g., 1 for the first row)
+        HEADER_CELL_SUPRESSION: ['A','B','C'], // Array of column letters to suppress header cells text from being displayed. (e.g., ['A','C'] to suppress header text for columns A and C)
+        USE_CORS_PROXY: false,
+        FETCH_DATA_ON_PAGE_LOAD: true,
+        SEARCH_DELAY_MS: 333,
+        AUTO_REFETCH_DATA_ON_ERROR_DELAY: 1500,
+        
+        // Image Configuration
+        // Note: Thumbnails referres to images shown in question rows
+        IMAGE_THUMB_MAX_WIDTH: 50, // Maximum width in pixels for thumbnails (set to null for no limit)
+        IMAGE_THUMB_MAX_HEIGHT: 50, // Maximum height in pixels for thumbnails (set to null for no limit)
+        IMAGE_ANSWER_MAX_WIDTH: 555, // Maximum width in pixels for answer images (set to null for no limit)
+        IMAGE_ANSWER_MAX_HEIGHT: null, // Maximum height in pixels for answer images (set to null for no limit)
+        IMAGE_ANSWER_ALIGN: 'center', // Options: 'left', 'center', 'right'. Only applies when image is inside an answer cell.
+        
+        // Video Configuration
+        YOUTUBE_EMBED_WIDTH: 560,
+        YOUTUBE_EMBED_HEIGHT: 315,
+        YOUTUBE_EMBED_ALIGN: 'center', // Options: 'left', 'center', 'right'. Only applies when video is inside an answer cell.
+        
+        // Column Configuration
+        COLUMN_WIDTHS: ['51','51','','130'], // Width in pixels for each column (empty string = auto width). Doesn't apply to auto-number column AUTO_NUMBER_COLUMN.
+        HEADER_ROW_COLUMNS_ALIGN: ['center','center','center','center'],
+        QUESTION_COLUMNS_ALIGN: ['left','left','left','center'],
+        QUESTION_COLUMNS: ['B','SHOW','D','F'], // Define which columns contain the questions. Also include a column titled "SHOW" to enable column that holds the SHOW_HIDE_ICON which shows whether the answer row is shown or hidden.
+        ANSWER_COLUMN: 'E', // Define which column contains the answers or leave blank to disable answers
+        URL_COLUMNS: ['C'], // Define GSheets columns containing URLs map to the corrosponding question columns (e.g., if QUESTION_COLUMNS is ['B','D'], and you want to map B to a column that only stores URLs like C, set URL_COLUMNS to ['C']). Note: B is first in the QUESTION_COLUMNS array, so C is first in the URL_COLUMNS array.
+        LAST_UPDATED_COLUMN: 'F', // Define which column contains the last updated date for each row (e.g., 'Last Updated Date'). Used when determining whether Unseen Changes Badge should be visible or hidden. Leave blank to disable last updated functionality. Date format must be YYYY-MM-DD.
+        VIEWED_COLUMN: 'D', // Define which question column contains the viewed status for answers that have been viewed/expanded (e.g., 'Previously Viewed'). Leave blank to disable viewed status.
+        VIEWED_TEXT: 'Previously Viewed', // Text to indicate that the item has been previously viewed.
+        VIEWED_TITLE: '[VIEWED_DATE]&#10;Most Recent BG Color = Red&#10;Least Recent BG Color = Blue',
+        VIEWED_DELAY: 3, // Delay in seconds before marking an answer as viewed (e.g., 30 = 30 seconds). Set to 0 to mark as viewed immediately when answer is shown.
+        UNSEEN_TEXT: 'New', // Text to indicate that the items Last Updated Date is more recent than the Last Viewed Date.
+        UNSEEN_TITLE: 'Unseen Changes! Fresh New Content Added!', // Tooltip title text for the unseen badge. Leave blank to use no title.
+        SHOW_HIDE_ICON_SVG: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="m5.25 4.5 7.5 7.5-7.5 7.5m6-15 7.5 7.5-7.5 7.5" /></svg>', // SVG tag for the show/hide icon. You can copy SVG code from sites like heroicons.com. Leave blank and a default chevron will be used.
+        SHOW_HIDE_DIRECTION_SHOWN: 'down', // Options: 'down', 'up', 'left', 'right' (direction of the icon when answer is shown)
+        SHOW_HIDE_DIRECTION_HIDDEN: 'right', // Options: 'down', 'up', 'left', 'right' (direction of the icon when answer is hidden)
+        SHOW_HIDE_ON_PAGE_LOAD: 'hide>1', // Options: 'show', 'show#1', 'show>1', 'hide', 'hide>1', 'random'. 'show' will show all answers on page load. 'show#1' will show the number of the row's answer and hide the rest on page load (e.g., 'show#11' will show row number 11). 'show>[Number]' will show rows greater than that [Number] on a page (e.g., if set to 'show>2' then the first 2 rows will be hidden and all remaining rows will be shown). 'hide' will hide all answers on page load. 'hide>[Number]' will hide rows if there's more rows present greater than the specified [Number]... e.g., if someone sets it to 'hide>2' then it will hide all rows when there are more than 2 rows present... if there are only 2 or 1 row present then they will be shown. 'random' will randomly show/hide each row's answer on page load.
+        SHOW_GET_VAR_NAME: 'show', // URL get variable name to trigger showing an answer row on page load. For example, if set to 'show', then adding '?show=11' to the end of the URL will show the answer row for row 11 on page load.
+
+        // Date Dots Heat Map Color Configuration
+        DATE_DOTS_HEAT_MAP: {
+            ENABLED: 1, // 1 = enabled, 0 = disabled. Enable to make the dots appear in the date column cells
+            DATE_COLUMNS: ['F'], // Column letters that contains the date values
+            COLOR_LEAST_RECENT: '#00F', // Color for the least recent date
+            COLOR_MOST_RECENT: '#F00',  // Color for the most recent date
+            TITLE: 'Most Recent Dots = Red&#10;Least Recent Dots = Blue',
+        },
+        
+        // Search Configuration
+        SEARCH_SCOPE: 'single', // Options: 'single' (search only this table) or 'all' (search all tables on page)
+        SHOW_SEARCH_BOX: true, // Set to false to hide search box for this instance
+        SEARCHES_COMMON: ['All', 'Acid', 'Aging', 'Amino Acid', 'Anti-Aging', 'Antioxidant', 'Autophagy', 'BCAA', 'Boron', 'Cacao', 'Carnitine', 'Casein', 'Coffee', 'Collagen', 'Colesterol', 'Copper', 'Creatine', 'D3', 'Dessert', 'Detox', 'Digestion', 'Fast', 'Fat', 'Flavor', 'Glycine', 'Gum', 'Health', 'Heart', 'Hormone', 'Hunger', 'Immunity', 'Inflammation', 'Joint', 'K2', 'Leucine', 'Liver', 'Longevity', 'Magnesium', 'Matcha', 'Metabolism', 'Muscle', 'NAC', 'Nutrition', 'Oil', 'Organic', 'Oxalate', 'Peptide', 'Performance', 'Pill', 'Polyphenol', 'Protein', 'Recovery', 'Sirtuin', 'Skin', 'Sleep', 'Softgel', 'Stevia', 'Superfood', 'Supplement', 'Sweetener', 'Testosterone', 'Vitamin', 'Whey', 'Xylitol', 'Zinc'],
+        SEARCH_PLACEHOLDER: 'Search...', // Placeholder text for the search input
+        SEARCH_PLACE_ANIMATION_SPEED: 222, // Delay in milliseconds between each letter when typing the placeholder
+        SEARCH_PLACE_ANIMATION_LOOP_DELAY: 2222, // Delay in milliseconds before the placeholder animation loops
+        SEARCH_GET_VAR_NAME: 'search', // URL get variable name to trigger a search query on page load. For example, if set to 'search', then adding '?search=coffee' to the end of the URL will trigger a search for "coffee" on page load.
+        
+        // Display Configuration
+        AUTO_NUMBER_COLUMN: 5, // Starting GSheets row number for auto-numbering rows (set to 0 to disable)
+        AUTO_NUMBER_COLUMN_WIDTH: 50, // Width in pixels for auto-number column (default: 50)
+        QUESTION_PREFIX: '&nbsp;&nbsp;&nbsp;',
+        //QUESTION_PREFIX: '<u><b>Question:</b></u>&nbsp;',  // HTML/text prefix for first (text based) question column. Does not apply to URL or Image URL columns. (empty string to disable)
+        ANSWER_PREFIX: '',
+        //ANSWER_PREFIX: '<u><b>Answer:</b></u><br>', // HTML/text to show before answer content (empty string to disable)
+		SHOW_ENLARGED_THUMBNAIL_IN_ANSWER_ROW: true, // Set to true to show enlarged thumbnail in answer row
+        
+        // Animation Configuration
+        ANSWER_TRANSITION_SPEED: 555, // Transition speed in milliseconds (e.g., 200, 400, 600, 800)
+        ANSWER_TRANSITION_EFFECT: 'snap', // Options: 'smooth', 'ease-in', 'ease-out', 'bounce', 'snap'
+        ANSWER_TEXT_EFFECT: 'rotate', // Options: 'none', 'slide', 'bounce', 'zoom', 'fade', 'blur', 'rotate', 'elastic'
+        ANSWER_TEXT_EFFECT_DIRECTION: 'up', // Options: 'left', 'right', 'up', 'down' (only for slide/bounce)
+        ANSWER_TEXT_EFFECT_FADE: 333, // Fade-in duration in milliseconds (0 to disable)
+        
+        // Filter Conditions
+        FILTER_CONDITIONS: [
+            { column: 'A', condition: 'equals', value: 'PUBLIC' },
+        ] 
+    };
+    </script>
+</body>
+</html>

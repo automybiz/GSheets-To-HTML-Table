@@ -1,0 +1,586 @@
+    /* ============================================
+       ACCORDION SEARCH INPUT
+       ============================================ */
+    .accordion-search-input {
+        color: var(--search-font-color) !important;
+        background-color: var(--search-bg-color) !important;
+        border: 1px solid var(--search-border-color) !important;
+        border-radius: var(--search-border-radius) !important;
+        font-size: var(--search-font-size) !important;
+        padding: var(--search-padding-vertical) var(--search-padding-horizontal) !important;
+        width: var(--search-width) !important;
+        margin-bottom: var(--search-margin-bottom) !important;
+        outline: none;
+    }
+    
+    .accordion-search-input::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+    }
+    
+    .accordion-common-searches {
+        display: inline-flex;
+        gap: var(--common-search-spacing);
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: var(--search-margin-bottom);
+    }
+    
+    .accordion-common-search-item {
+        color: var(--search-font-color);
+        background-color: var(--search-bg-color);
+        border: 1px solid var(--search-border-color);
+        border-radius: var(--search-border-radius);
+        font-size: calc(var(--search-font-size) - 2px);
+        padding: 4px 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+    
+    .accordion-common-search-item:hover {
+        background-color: var(--question-hover-bg-color);
+        transform: translateY(-1px);
+    }
+    
+    .accordion-common-search-item:active {
+        transform: translateY(0);
+    }
+    
+    .accordion-search-highlight {
+        background-color: var(--search-highlight-bg-color);
+        color: var(--search-highlight-text-color);
+        padding: 0px 0px;
+        border-radius: 2px;
+    }
+    
+    .text-no-background {
+        color: var(--text-no-background-color);
+        font-size: var(--text-no-background-size);
+    }
+    
+    /* ============================================
+       ACCORDION TABLE STYLES
+       ============================================ */
+    .accordion-container {
+        max-width: 100%;
+    }
+    
+    .accordion-item {
+        margin-bottom: var(--accordion-spacing);
+    }
+    
+    .accordion-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-family: var(--question-font-family);
+        font-size: var(--question-font-size);
+        border: 1px solid var(--question-border-color);
+        border-radius: var(--border-radius);
+        overflow: hidden;
+    }
+    
+    .accordion-question-row {
+        background-color: color-mix(in srgb, var(--question-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-hidden))));
+        color: var(--question-font-color);
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    .accordion-item.active .accordion-question-row {
+        background-color: color-mix(in srgb, var(--question-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-shown))));
+    }
+
+    .accordion-question-row a {
+        color: var(--question-link-color);
+        text-decoration: underline;
+        display: inline-block;
+        vertical-align: middle;
+    }
+
+    .accordion-question-row a:visited {
+        color: var(--question-link-color);
+    }
+    
+    .accordion-item:nth-child(even) .accordion-question-row {
+        background-color: color-mix(in srgb, var(--row-even-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-hidden))));
+    }
+
+    .accordion-item.active:nth-child(even) .accordion-question-row {
+        background-color: color-mix(in srgb, var(--row-even-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-shown))));
+    }
+    
+    .accordion-item:nth-child(odd) .accordion-question-row {
+        background-color: color-mix(in srgb, var(--row-odd-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-hidden))));
+    }
+
+    .accordion-item.active:nth-child(odd) .accordion-question-row {
+        background-color: color-mix(in srgb, var(--row-odd-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-shown))));
+    }
+    
+        /* Explicit row coloring for dynamic updates */
+        .accordion-question-row.even-row {
+            background-color: color-mix(in srgb, var(--row-even-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-hidden)))) !important;
+        }
+
+        .accordion-item.active .accordion-question-row.even-row {
+            background-color: color-mix(in srgb, var(--row-even-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-shown)))) !important;
+        }
+    
+        .accordion-question-row.odd-row {
+            background-color: color-mix(in srgb, var(--row-odd-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-hidden)))) !important;
+        }
+
+        .accordion-item.active .accordion-question-row.odd-row {
+            background-color: color-mix(in srgb, var(--row-odd-bg-color), transparent calc(100% * (1 - var(--question-bg-opacity-when-answer-shown)))) !important;
+        }
+    
+    .accordion-question-row.no-answer {
+        cursor: default;
+    }
+    
+    .accordion-question-row:not(.no-answer):hover {
+        background-color: var(--question-hover-bg-color);
+        color: var(--question-hover-font-color);
+    }
+    
+    .accordion-question-row td {
+        padding: var(--question-padding-vertical) var(--question-padding-horizontal);
+        border-bottom: 1px solid var(--question-border-color);
+        border-right: 1px solid var(--question-border-color);
+    }
+
+    /* Remove right border on the last cell of each row */
+    .accordion-question-row td:last-child {
+        border-right: none;
+    }
+
+    /* Ensure thumbnail cells have no padding */
+    .accordion-question-row td.accordion-image-cell {
+        padding: 0;
+    }
+
+    .accordion-image-cell {
+        padding: 0px 0p;
+    }
+    
+    /* Restore bottom border when answer is expanded */
+    .accordion-item.active .accordion-question-row td {
+        border-bottom-width: 1px;
+    }
+    
+    /* Auto-number column styling */
+    .accordion-auto-number-cell {
+        width: var(--auto-number-column-width);
+        max-width: var(--auto-number-column-width);
+        white-space: nowrap;
+        overflow: hidden;
+    }
+    
+    /* Remove padding for image cells */
+    .accordion-question-row td.accordion-image-cell {
+        line-height: 0;
+        vertical-align: middle;
+        text-align: center;
+    }
+    
+    .accordion-image-content {
+        display: block;
+        margin: 0 auto;
+    }
+
+    /* Toggle Icon Rotation */
+    .accordion-toggle-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.3s ease;
+        /* Size control for both SVG and text icons */
+        width: var(--show-hide-icon-size);
+        height: var(--show-hide-icon-size);
+        font-size: var(--show-hide-icon-size) !important;
+        color: var(--show-hide-icon-color) !important; /* Apply custom color */
+        line-height: 1;
+        transform-origin: center center;
+    }
+    
+    /* Ensure SVG icons scale correctly */
+    .accordion-toggle-icon svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+    }
+
+    /* Center toggle icon in cell */
+    .accordion-toggle-cell {
+        text-align: center;
+        vertical-align: middle;
+        padding: 0 !important; /* Reset padding for perfect centering */
+    }
+
+    .accordion-toggle-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Hidden Directions (Default state) */
+    .accordion-toggle-cell[data-hidden-dir="up"] .accordion-toggle-icon { transform: rotate(-90deg); }
+    .accordion-toggle-cell[data-hidden-dir="down"] .accordion-toggle-icon { transform: rotate(90deg); }
+    .accordion-toggle-cell[data-hidden-dir="left"] .accordion-toggle-icon { transform: rotate(180deg); }
+    .accordion-toggle-cell[data-hidden-dir="right"] .accordion-toggle-icon { transform: rotate(0deg); }
+
+    /* Shown Directions (When parent .accordion-item is .active) */
+    .accordion-item.active .accordion-toggle-cell[data-shown-dir="up"] .accordion-toggle-icon { transform: rotate(-90deg); }
+    .accordion-item.active .accordion-toggle-cell[data-shown-dir="down"] .accordion-toggle-icon { transform: rotate(90deg); }
+    .accordion-item.active .accordion-toggle-cell[data-shown-dir="left"] .accordion-toggle-icon { transform: rotate(180deg); }
+    .accordion-item.active .accordion-toggle-cell[data-shown-dir="right"] .accordion-toggle-icon { transform: rotate(0deg); }
+    
+    /* Ensure thumbnails fill the cell without extra space */
+    .accordion-image-cell .accordion-image-content {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: fill; /* Match the stretch request */
+    }
+    
+    /* Apply rounding to the first visible row's top corners */
+    .accordion-question-row.first-visible-row td:first-child {
+        border-top-left-radius: var(--border-radius);
+    }
+    .accordion-question-row.first-visible-row td:last-child {
+        border-top-right-radius: var(--border-radius);
+    }
+
+    /* Apply rounding to the last visible item's bottom corners */
+    .last-visible-item .accordion-question-row.no-answer td:first-child,
+    .last-visible-item .accordion-answer-row .accordion-answer-cell {
+        border-bottom-left-radius: var(--border-radius);
+    }
+    .last-visible-item .accordion-question-row.no-answer td:last-child,
+    .last-visible-item .accordion-answer-row .accordion-answer-cell {
+        border-bottom-right-radius: var(--border-radius);
+    }
+
+    /* Remove bottom border on the very last row (handled by table container) */
+    .last-visible-item .accordion-question-row.no-answer td,
+    .last-visible-item:not(.active) .accordion-question-row td,
+    .last-visible-item .accordion-answer-row .accordion-answer-cell {
+        border-bottom: none;
+    }
+    
+    .accordion-answer-row {
+        background-color: color-mix(in srgb, var(--answer-bg-color), transparent calc(100% * (1 - var(--answer-bg-opacity))));
+        color: var(--answer-font-color);
+    }
+    
+    .accordion-answer-cell {
+        padding: 0;
+        border-bottom: 1px solid var(--question-border-color);
+    }
+    
+    /* Hide answer cell border when collapsed */
+    .accordion-item:not(.active) .accordion-answer-cell {
+        border-bottom: none;
+    }
+    
+    .accordion-answer-wrapper {
+        max-height: 0;
+        overflow: hidden;
+    }
+    
+    .accordion-item.active .accordion-answer-wrapper {
+        max-height: 5000px;
+    }
+    
+    .accordion-answer-content {
+	    padding-left: var(--answer-padding-left);
+		padding-right: var(--answer-padding-right);
+        padding-top: var(--answer-padding-top);
+		padding-bottom: var(--answer-padding-bottom);
+        line-height: 1.6;
+        font-family: var(--answer-font-family);
+        font-size: var(--answer-font-size);
+        opacity: 0;
+        transform: translateY(0);
+        transition: opacity 0.1s, transform 0.1s;
+    }
+    
+    .accordion-item.active .accordion-answer-content {
+        opacity: 1;
+    }
+    
+    .accordion-answer-content img, .accordion-answer-image {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin: 10px 0px;
+        border: var(--answer-image-border-size) solid var(--answer-image-border-color);
+        border-radius: var(--answer-image-border-radius);
+    }
+    
+    .accordion-video-container {
+        text-align: right;
+        margin: 0px 0px;
+    }
+
+    .accordion-answer-content iframe, .accordion-answer-video {
+        border: var(--answer-video-border-size) solid var(--answer-video-border-color);
+        border-radius: var(--answer-video-border-radius);
+        display: inline-block;
+    }
+    
+    .accordion-answer-content .lazy-youtube-placeholder {
+        display: inline-block;
+        margin: 0;
+    }
+    
+    /* ============================================
+       LAZY LOADING PLACEHOLDER STYLES
+       ============================================ */
+    .lazy-image-placeholder {
+        transition: all 0.3s ease;
+        cursor: pointer;
+        user-select: none;
+        border-radius: var(--answer-image-border-radius) !important;
+    }
+
+    .lazy-youtube-placeholder {
+        transition: all 0.3s ease;
+        cursor: pointer;
+        user-select: none;
+        border-radius: var(--answer-video-border-radius) !important;
+    }
+    
+    .lazy-image-placeholder:hover,
+    .lazy-youtube-placeholder:hover {
+        background: #444 !important;
+        border-color: #888 !important;
+        transform: scale(1.02);
+    }
+    
+    .lazy-image-placeholder.loading,
+    .lazy-youtube-placeholder.loading {
+        opacity: 0.7;
+        cursor: wait;
+    }
+    
+    .lazy-image-placeholder.loading:hover,
+    .lazy-youtube-placeholder.loading:hover {
+        background: #333 !important;
+        border-color: #666 !important;
+        transform: none;
+    }
+    
+    .accordion-answer-content a {
+        color: #0099ff;
+        text-decoration: underline;
+    }
+    
+    .accordion-answer-content a:hover {
+        color: #00ccff;
+    }
+	
+	.accordion-answer-thumbnail {
+		float: right;
+		margin-left: 10px;
+		margin-bottom: 10px;
+		max-width: 300px;
+		
+	}
+
+	.accordion-answer-thumbnail img {
+		width: 100%;
+		height: auto;
+		display: block;
+		border: var(--answer-image-big-thumb-border-size) solid var(--answer-image-big-thumb-border-color);
+		border-radius: var(--answer-image-big-thumb-border-radius);
+	}
+    
+    /* Text effect animations */
+    @keyframes slideFromLeft {
+        from { transform: translateX(-30px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    
+    @keyframes slideFromRight {
+        from { transform: translateX(30px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    
+    @keyframes slideFromUp {
+        from { transform: translateY(30px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    
+    @keyframes slideFromDown {
+        from { transform: translateY(-30px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    
+    @keyframes bounceFromLeft {
+        0% { transform: translateX(-50px); opacity: 0; }
+        60% { transform: translateX(10px); opacity: 1; }
+        80% { transform: translateX(-5px); }
+        100% { transform: translateX(0); }
+    }
+    
+    @keyframes bounceFromRight {
+        0% { transform: translateX(50px); opacity: 0; }
+        60% { transform: translateX(-10px); opacity: 1; }
+        80% { transform: translateX(5px); }
+        100% { transform: translateX(0); }
+    }
+    
+    @keyframes bounceFromUp {
+        0% { transform: translateY(50px); opacity: 0; }
+        60% { transform: translateY(-10px); opacity: 1; }
+        80% { transform: translateY(5px); }
+        100% { transform: translateY(0); }
+    }
+    
+    @keyframes bounceFromDown {
+        0% { transform: translateY(-50px); opacity: 0; }
+        60% { transform: translateY(10px); opacity: 1; }
+        80% { transform: translateY(-5px); }
+        100% { transform: translateY(0); }
+    }
+    
+    @keyframes zoomIn {
+        from { transform: scale(0.3); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    @keyframes blurIn {
+        from { filter: blur(10px); opacity: 0; }
+        to { filter: blur(0); opacity: 1; }
+    }
+    
+    @keyframes rotateIn {
+        from { transform: rotate(-180deg) scale(0.5); opacity: 0; }
+        to { transform: rotate(0) scale(1); opacity: 1; }
+    }
+    
+    @keyframes elasticIn {
+        0% { transform: scale(0); opacity: 0; }
+        50% { transform: scale(1.2); opacity: 0.8; }
+        70% { transform: scale(0.9); opacity: 1; }
+        85% { transform: scale(1.05); }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    
+    .accordion-item.hidden {
+        display: none;
+    }
+    
+    .loading-message {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6c757d;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    .spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #667eea;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 15px;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .error-message {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 20px;
+        border-radius: var(--border-radius);
+        border: 1px solid #f5c6cb;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    
+    .error-message.auto-retry {
+        background: #fff3cd;
+        color: #856404;
+        border-color: #ffeaa7;
+        cursor: pointer;
+    }
+    
+    .error-message.auto-retry:hover {
+        background: #ffe8a1;
+    }
+    
+    .no-results-message {
+        text-align: center;
+        padding: 20px;
+        color: var(--answer-font-color);
+        font-family: var(--answer-font-family);
+        font-size: var(--answer-font-size);
+    }
+
+    /* ============================================
+       DATE HEAT MAP DOTS
+       ============================================ */
+    .date-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-left: 8px;
+        vertical-align: middle;
+        box-shadow: 0 0 2px rgba(0,0,0,0.5);
+        flex-shrink: 0;
+        cursor: help;
+    }
+
+    /* Ensure the cell container can handle the dot alignment */
+    .date-cell-wrapper {
+        display: inline-flex;
+        align-items: center;
+        white-space: nowrap;
+    }
+
+    /* ============================================
+       BADGE STYLES
+       ============================================ */
+    .badges {
+        display: inline-block;
+        padding: var(--badge-padding-vertical) var(--badge-padding-horizontal);
+        border-radius: var(--badge-border-radius);
+        font-size: var(--badge-font-size);
+        white-space: nowrap;
+        vertical-align: middle;
+        line-height: normal;
+        cursor: help;
+    }
+
+    .badge-viewed {
+        color: var(--badge-viewed-font-color);
+        border: var(--badge-viewed-border-size) solid var(--badge-viewed-border-color);
+    }
+
+    .badge-unseen {
+        color: var(--badge-unseen-font-color);
+        background-color: var(--badge-unseen-bg-color);
+        border: var(--badge-unseen-border-size) solid var(--badge-unseen-border-color);
+        margin-right: 1px;
+    }
+    
+    .badge-container {
+        position: absolute;
+        top: -3px;
+        right: 1px;
+        z-index: 11;
+    }
