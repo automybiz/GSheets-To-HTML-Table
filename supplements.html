@@ -64,6 +64,8 @@
         IMAGE_ANSWER_MAX_WIDTH: 555, // Maximum width in pixels for answer images (set to null for no limit)
         IMAGE_ANSWER_MAX_HEIGHT: null, // Maximum height in pixels for answer images (set to null for no limit)
         IMAGE_ANSWER_ALIGN: 'center', // Options: 'left', 'center', 'right'. Only applies when image is inside an answer cell.
+        IMAGE_PREV_AND_NEXT_ICON_SVG: '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="m5.25 4.5 7.5 7.5-7.5 7.5m6-15 7.5 7.5-7.5 7.5" /></svg>', // SVG tag for the previous and next images in the popup overlay window. You can copy SVG code from sites like heroicons.com. Leave blank and a default chevron will be used.
+        IMAGE_ZOOM_ON_DBLCLICK: '200%', // Zoom level when double-clicking a popup overlay image (e.g., '150%', '200%', '300%'). Set to '0' to disable zoom on double-click.
         
         // Video Configuration
         YOUTUBE_EMBED_WIDTH: 560,
@@ -104,8 +106,8 @@
         SHOW_SEARCH_BOX: true, // Set to false to hide search box for this instance
         SEARCHES_COMMON: ['All', 'Acid', 'Aging', 'Amino Acid', 'Anti-Aging', 'Antioxidant', 'Autophagy', 'BCAA', 'Boron', 'Cacao', 'Carnitine', 'Casein', 'Coffee', 'Collagen', 'Colesterol', 'Copper', 'Creatine', 'D3', 'Dessert', 'Detox', 'Digestion', 'Fast', 'Fat', 'Flavor', 'Glycine', 'Gum', 'Health', 'Heart', 'Hormone', 'Hunger', 'Immunity', 'Inflammation', 'Joint', 'K2', 'Leucine', 'Liver', 'Longevity', 'Magnesium', 'Matcha', 'Metabolism', 'Muscle', 'NAC', 'Nutrition', 'Oil', 'Organic', 'Oxalate', 'Peptide', 'Performance', 'Pill', 'Polyphenol', 'Protein', 'Recovery', 'Sirtuin', 'Skin', 'Sleep', 'Softgel', 'Stevia', 'Superfood', 'Supplement', 'Sweetener', 'Testosterone', 'Vitamin', 'Whey', 'Xylitol', 'Zinc'],
         SEARCH_PLACEHOLDER: 'Search...', // Placeholder text for the search input
-        SEARCH_PLACE_ANIMATION_SPEED: 222, // Delay in milliseconds between each letter when typing the placeholder
-        SEARCH_PLACE_ANIMATION_LOOP_DELAY: 2222, // Delay in milliseconds before the placeholder animation loops
+        SEARCH_PLACEHOLDER_ANIMATION_SPEED: 222, // Delay in milliseconds between each letter when typing the placeholder
+        SEARCH_PLACEHOLDER_ANIMATION_LOOP_DELAY: 2222, // Delay in milliseconds before the placeholder animation loops
         SEARCH_GET_VAR_NAME: 'search', // URL get variable name to trigger a search query on page load. For example, if set to 'search', then adding '?search=coffee' to the end of the URL will trigger a search for "coffee" on page load.
         
         // Display Configuration

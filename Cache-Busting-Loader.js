@@ -18,7 +18,7 @@ const LATEST_VERSION = '{{VERSION}}';
     const overridesTag = document.getElementById('GSheets-To-HTML-Table-Overrides');
 
     // Determine environment (Local vs Production)
-    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '' || window.location.protocol === 'file:';
     const baseUrl = isLocal ? '' : 'https://automybiz.github.io/GSheets-To-HTML-Table/latest/';
 
     // 1. Root CSS (Variables)

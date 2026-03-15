@@ -30,7 +30,7 @@
         
         /* Answer Media Enlarged Thumbnail Styling */
         --answer-image-big-thumb-border-size: 0px;
-        --answer-image-big-thumb-border-color: #F00;
+        --answer-image-big-thumb-border-color: #0FF;
         --answer-image-big-thumb-border-radius: 18px;
 
         /* Opacity Styling */
@@ -90,4 +90,32 @@
         --badge-unseen-border-size: 0px;
         --badge-unseen-bg-color: #0F0;
 
+        /* Image Overlay Styling */
+        --overlay-bg-color: #000;
+        --overlay-bg-opacity: 0.9;
+        --overlay-z-index: 9999;
+        --overlay-zoom-text-color: #FFF;
+        --overlay-zoom-text-bg-color: #000;
+        --overlay-zoom-text-bg-opacity: 0.5;
+        --overlay-zoom-text-font-size: 18px;
+        --overlay-nav-button-bg: #000;
+        --overlay-nav-button-bg-opacity: 0.5;
+        --overlay-nav-button-hover-bg: #000;
+        --overlay-nav-button-hover-bg-opacity: 0.8;
+        --overlay-nav-button-color: #FFF;
+        --overlay-nav-button-size: 100px;
+        --overlay-thumbnail-strip-bg: #000;
+        --overlay-thumbnail-strip-bg-opacity: 0.7;
+        --overlay-thumbnail-size: 100px;
+        --overlay-thumbnail-border: 2px solid #088;
+        --overlay-thumbnail-active-border: 2px solid #0FF;
+        
+        /* Overlay Image Glow Styling */
+        --overlay-image-glow-color: #0FF;
+        --overlay-image-glow-size: 11px;
+        --overlay-image-glow-opacity: 0.9;
+
+        --overlay-image-glow-hover-color: #0FF;
+        --overlay-image-glow-hover-size: 33px;
+        --overlay-image-glow-hover-opacity: 0.9;
     }

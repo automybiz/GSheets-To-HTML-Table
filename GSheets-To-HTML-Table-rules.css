@@ -584,3 +584,154 @@
         right: 1px;
         z-index: 11;
     }
+
+    /* ============================================
+       IMAGE OVERLAY AND ZOOM STYLES
+       ============================================ */
+    .image-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: color-mix(in srgb, var(--overlay-bg-color), transparent calc(100% * (1 - var(--overlay-bg-opacity))));
+        z-index: var(--overlay-z-index);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        visibility: hidden;
+    }
+
+    .image-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .image-overlay-close {
+        position: absolute;
+        top: -10px;
+        right: 20px;
+        color: var(--overlay-zoom-text-color);
+        font-size: 30px;
+        cursor: pointer;
+        z-index: 2;
+        background: color-mix(in srgb, var(--overlay-zoom-text-bg-color), transparent calc(100% * (1 - var(--overlay-zoom-text-bg-opacity))));
+        width: 40px;
+        height: 40px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 50%;
+        user-select: none;
+    }
+
+    .image-overlay-zoom-text {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: var(--overlay-zoom-text-color);
+        background: color-mix(in srgb, var(--overlay-zoom-text-bg-color), transparent calc(100% * (1 - var(--overlay-zoom-text-bg-opacity))));
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: var(--overlay-zoom-text-font-size);
+        z-index: 2;
+        pointer-events: none;
+        user-select: none;
+    }
+
+    .image-overlay-img-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+    }
+
+    .image-overlay-img {
+        max-width: 90%;
+        max-height: 90%;
+        object-fit: contain;
+        transition: transform 0.1s ease-out, box-shadow 0.3s ease;
+        transform-origin: center center;
+        cursor: zoom-in;
+        box-shadow: 0 0 var(--overlay-image-glow-size) color-mix(in srgb, var(--overlay-image-glow-color), transparent calc(100% * (1 - var(--overlay-image-glow-opacity))));
+    }
+
+    .image-overlay-img:hover {
+        box-shadow: 0 0 var(--overlay-image-glow-hover-size) color-mix(in srgb, var(--overlay-image-glow-hover-color), transparent calc(100% * (1 - var(--overlay-image-glow-hover-opacity))));
+    }
+
+    .image-overlay-nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: var(--overlay-nav-button-size);
+        height: var(--overlay-nav-button-size);
+        background: color-mix(in srgb, var(--overlay-nav-button-bg), transparent calc(100% * (1 - var(--overlay-nav-button-bg-opacity))));
+        color: var(--overlay-nav-button-color);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        border-radius: 50%;
+        z-index: 2;
+        transition: background 0.2s ease;
+        user-select: none;
+    }
+
+    .image-overlay-nav:hover {
+        background: color-mix(in srgb, var(--overlay-nav-button-hover-bg), transparent calc(100% * (1 - var(--overlay-nav-button-hover-bg-opacity))));
+    }
+
+    .image-overlay-nav.prev {
+        left: 20px;
+    }
+
+    .image-overlay-nav.next {
+        right: 20px;
+    }
+
+    .image-overlay-nav svg {
+        width: 60%;
+        height: 60%;
+    }
+
+    .image-overlay-thumbnails {
+        width: 100%;
+        height: auto;
+        min-height: calc(var(--overlay-thumbnail-size) + 20px);
+        background: color-mix(in srgb, var(--overlay-thumbnail-strip-bg), transparent calc(100% * (1 - var(--overlay-thumbnail-strip-bg-opacity))));
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        box-sizing: border-box;
+        overflow-x: auto;
+    }
+
+    .image-overlay-thumb {
+        width: var(--overlay-thumbnail-size);
+        height: var(--overlay-thumbnail-size);
+        object-fit: cover;
+        cursor: pointer;
+        border: var(--overlay-thumbnail-border);
+        transition: transform 0.2s ease;
+        border-radius: 4px;
+        flex-shrink: 0;
+    }
+
+    .image-overlay-thumb:hover {
+        transform: scale(1.1);
+    }
+
+    .image-overlay-thumb.active {
+        border: var(--overlay-thumbnail-active-border);
+    }

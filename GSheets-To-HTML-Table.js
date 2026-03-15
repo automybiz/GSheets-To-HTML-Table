@@ -313,6 +313,9 @@
             
             const trimmedUrl = url.trim();
             
+            // Explicitly exclude YouTube URLs
+            if (isYouTubeURL(trimmedUrl)) return false;
+
             // Check if starts with http/https
             if (!trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://')) {
                 return false;
@@ -336,7 +339,8 @@
 
         function isYouTubeURL(url) {
             if (!url || typeof url !== 'string') return false;
-            return url.includes('youtube.com') || url.includes('youtu.be');
+            const lowerUrl = url.toLowerCase();
+            return lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be');
         }
         
         function isDirectImageURL(text) {
@@ -406,7 +410,7 @@
             return interpolateColor(CONFIG.DATE_DOTS_HEAT_MAP.COLOR_LEAST_RECENT, CONFIG.DATE_DOTS_HEAT_MAP.COLOR_MOST_RECENT, factor);
         }
         
-        function generateImageTag(imageUrl, isInCell = false) {
+        function generateImageTag(imageUrl, isInCell = false, popupEnabled = false, rowImagesArray = []) {
             let styles = [];
             let maxWidth, maxHeight;
 
@@ -456,9 +460,18 @@
             }
             
             // Add class to identify image cells for padding removal
-            const className = isInCell ? 'class="accordion-image-content"' : 'class="accordion-answer-image"';
+            let className = isInCell ? 'class="accordion-image-content"' : 'class="accordion-answer-image"';
             
-            return `<img src="${imageUrl}" ${className} style="${styles.join('; ')}" alt="Image" loading="lazy">`;
+            let onClick = '';
+            if (popupEnabled && rowImagesArray.length > 0) {
+                const rowImagesJson = JSON.stringify(rowImagesArray).replace(/"/g, '"');
+                onClick = ` onclick='window.openGSheetsImageOverlay("${imageUrl}", ${rowImagesJson})'`;
+                styles.push('cursor: pointer');
+            }
+            
+            let styleAttr = ` style="${styles.join('; ')}"`;
+            
+            return `<img src="${imageUrl}" ${className}${onClick}${styleAttr} alt="Image" loading="lazy">`;
         }
         
         function extractImagesFromCell(text) {
@@ -593,11 +606,12 @@
         // ============================================
         // LAZY LOADING FUNCTIONS
         // ============================================
-        function generateLazyImagePlaceholder(imageUrl, isInCell = false) {
+        function generateLazyImagePlaceholder(imageUrl, isInCell = false, popupEnabled = false, rowImagesArray = []) {
             const className = isInCell ? 'class="accordion-image-content lazy-image-placeholder"' : 'class="lazy-image-placeholder"';
             const placeholderStyle = isInCell ? 'display: block; margin: 0 auto; background: #333; border: 2px dashed #666; border-radius: 4px; text-align: center; color: #999; font-size: 12px; padding: 20px 10px;' : 'background: #333; border: 2px dashed #666; border-radius: var(--answer-image-border-radius); text-align: center; color: #999; font-size: 14px; padding: 40px 20px; margin: 10px 0;';
             
-            return `<div ${className} data-original-url="${imageUrl}" style="${placeholderStyle}" onclick="window.loadLazyImage(this)">${imageUrl}</div>`;
+            const popupData = popupEnabled ? ` data-popup-enabled="true" data-row-images='${encodeURIComponent(JSON.stringify(rowImagesArray))}'` : '';
+            return `<div ${className} data-original-url="${imageUrl}"${popupData} style="${placeholderStyle}" onclick="window.loadLazyImage(this)">${imageUrl}</div>`;
         }
         
         function generateLazyYouTubePlaceholder(url, videoId, videoTitle, timeParam, playlistParam) {
@@ -665,7 +679,20 @@
                 }
                 
                 const className = isInCell ? 'class="accordion-image-content"' : 'class="accordion-answer-image"';
-                const finalHtml = `<img src="${imageUrl}" ${className} style="${styles.join('; ')}" alt="Image" loading="lazy">`;
+                
+                let onClick = '';
+                if (element.dataset.popupEnabled === 'true' && element.dataset.rowImages) {
+                    try {
+                        const rowImagesArray = JSON.parse(decodeURIComponent(element.dataset.rowImages));
+                        const rowImagesJson = JSON.stringify(rowImagesArray).replace(/"/g, '"');
+                        onClick = ` onclick='window.openGSheetsImageOverlay("${imageUrl}", ${rowImagesJson})'`;
+                        styles.push('cursor: pointer');
+                    } catch (e) {
+                    }
+                }
+                
+                let styleAttr = ` style="${styles.join('; ')}"`;
+                const finalHtml = `<img src="${imageUrl}" ${className}${onClick}${styleAttr} alt="Image" loading="lazy">`;
                 
                 element.outerHTML = finalHtml;
             };
@@ -700,20 +727,21 @@
                 const startMatch = timeParam ? timeParam.match(/[?&]start=(\d+)/) : null;
                 const startTime = startMatch ? startMatch[1] : null;
 
+                // Build clean params using URLSearchParams
+                const params = new URLSearchParams();
+                if (playlistId) params.set('list', playlistId);
+                if (startTime) params.set('start', startTime);
+                const query = params.toString();
+
                 if (videoId && playlistId) {
-                    const params = new URLSearchParams();
-                    params.set('list', playlistId);
-                    if (startTime) params.set('start', startTime);
-                    finalUrl = `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+                    finalUrl = `https://www.youtube.com/embed/${videoId}${query ? '?' + query : ''}`;
                 } else if (playlistId) {
-                    const params = new URLSearchParams();
-                    params.set('list', playlistId);
-                    if (startTime) params.set('start', startTime);
-                    finalUrl = `https://www.youtube.com/embed/videoseries?${params.toString()}`;
+                    finalUrl = `https://www.youtube.com/embed/videoseries${query ? '?' + query : ''}`;
                 } else {
-                    finalUrl = `https://www.youtube.com/embed/${videoId}${timeParam}`;
+                    finalUrl = `https://www.youtube.com/embed/${videoId}${query ? '?' + query : ''}`;
                 }
 
+                console.log('[Accordion] Loading YouTube Embed:', finalUrl);
                 iframe.src = finalUrl;
                 iframe.title = 'YouTube video player';
                 iframe.frameBorder = '0';
@@ -750,20 +778,322 @@
             rowElement.dataset.lazyProcessed = 'true';
         }
         
-        function convertURLsToLinks(text, isInCell = false, lazyMode = false) {
+        // Function to create or update the global image overlay
+        function openImageOverlay(clickedImgSrc, rowImages) {
+            let overlay = document.getElementById('gsheets-image-overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'gsheets-image-overlay';
+                overlay.className = 'image-overlay';
+                
+                const navIconSvg = CONFIG.IMAGE_PREV_AND_NEXT_ICON_SVG || `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" /></svg>`;
+                
+                overlay.innerHTML = `
+                    <div class="image-overlay-zoom-text" id="gsheets-image-zoom-text">100%</div>
+                    
+                    <div class="image-overlay-nav prev" id="gsheets-overlay-prev" style="transform: translateY(-50%) rotate(180deg);">
+                        ${navIconSvg}
+                    </div>
+                    <div class="image-overlay-nav next" id="gsheets-overlay-next">
+                        ${navIconSvg}
+                    </div>
+
+                    <div class="image-overlay-img-container" id="gsheets-image-container">
+                        <div id="gsheets-image-wrapper" style="position: relative; display: inline-block; transition: transform 0.1s ease-out; transform-origin: center center;">
+                            <img src="" class="image-overlay-img" id="gsheets-main-img">
+                            <div class="image-overlay-close">&times;</div>
+                        </div>
+                    </div>
+                    <div class="image-overlay-thumbnails" id="gsheets-overlay-thumbnails"></div>
+                `;
+                document.body.appendChild(overlay);
+
+                let currentScale = 1;
+                const minScale = 1;
+                const maxScale = 5;
+                const zoomStep = 0.2;
+                
+                const mainImg = overlay.querySelector('#gsheets-main-img');
+                const imgWrapper = overlay.querySelector('#gsheets-image-wrapper');
+                const zoomText = overlay.querySelector('#gsheets-image-zoom-text');
+                const closeBtn = overlay.querySelector('.image-overlay-close');
+                const container = overlay.querySelector('#gsheets-image-container');
+
+                function updateZoom() {
+                    imgWrapper.style.transform = `scale(${currentScale})`;
+                    zoomText.textContent = `${Math.round(currentScale * 100)}%`;
+                    
+                    if (currentScale > 1) {
+                        imgWrapper.style.cursor = 'zoom-out';
+                    } else {
+                        imgWrapper.style.cursor = 'zoom-in';
+                    }
+                }
+
+                // Close on click outside, close btn, or ESC key
+                closeBtn.addEventListener('click', () => {
+                    overlay.classList.remove('active');
+                });
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay || e.target === container) {
+                        overlay.classList.remove('active');
+                    }
+                });
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && overlay.classList.contains('active')) {
+                        overlay.classList.remove('active');
+                    }
+                });
+
+                // Double Click to Zoom
+                imgWrapper.addEventListener('dblclick', (e) => {
+                    // Prevent text selection
+                    e.preventDefault();
+                    
+                    if (currentScale > 1) {
+                        // Reset if already zoomed
+                        currentScale = 1;
+                        imgWrapper.style.transformOrigin = `center center`;
+                    } else {
+                        // Zoom in to configured level
+                        const configuredZoom = (CONFIG.IMAGE_ZOOM_ON_DBLCLICK && CONFIG.IMAGE_ZOOM_ON_DBLCLICK !== '0') 
+                                            ? parseFloat(CONFIG.IMAGE_ZOOM_ON_DBLCLICK) / 100 
+                                            : 2.0; // Default to 200%
+                        
+                        if (configuredZoom > 1) {
+                            // Get mouse position relative to image to set origin
+                            const rect = imgWrapper.getBoundingClientRect();
+                            const mouseX = e.clientX - rect.left;
+                            const mouseY = e.clientY - rect.top;
+                            const xPercent = (mouseX / rect.width) * 100;
+                            const yPercent = (mouseY / rect.height) * 100;
+                            
+                            imgWrapper.style.transformOrigin = `${xPercent}% ${yPercent}%`;
+                            currentScale = configuredZoom;
+                        }
+                    }
+                    updateZoom();
+                });
+
+                // Mouse Wheel Zooming
+                imgWrapper.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    
+                    // Get mouse position relative to image
+                    const rect = imgWrapper.getBoundingClientRect();
+                    const mouseX = e.clientX - rect.left;
+                    const mouseY = e.clientY - rect.top;
+
+                    // Calculate percentage relative to image dimensions
+                    const xPercent = (mouseX / rect.width) * 100;
+                    const yPercent = (mouseY / rect.height) * 100;
+
+                    // Only update transform origin if we are at scale 1 (starting zoom) 
+                    if (currentScale === 1) {
+                        imgWrapper.style.transformOrigin = `${xPercent}% ${yPercent}%`;
+                    }
+
+                    if (e.deltaY < 0) {
+                        currentScale = Math.min(maxScale, currentScale + zoomStep);
+                    } else {
+                        currentScale = Math.max(minScale, currentScale - zoomStep);
+                        if (currentScale === 1) {
+                            imgWrapper.style.transformOrigin = `center center`;
+                        }
+                    }
+                    updateZoom();
+                });
+
+                // Reset zoom when navigating
+                overlay.resetZoom = () => {
+                    currentScale = 1;
+                    imgWrapper.style.transformOrigin = `center center`;
+                    updateZoom();
+                };
+            }
+
+            // Populate data
+            const mainImg = overlay.querySelector('#gsheets-main-img');
+            const thumbContainer = overlay.querySelector('#gsheets-overlay-thumbnails');
+            const prevBtn = overlay.querySelector('#gsheets-overlay-prev');
+            const nextBtn = overlay.querySelector('#gsheets-overlay-next');
+
+            let currentIndex = rowImages.indexOf(clickedImgSrc);
+            if (currentIndex === -1) currentIndex = 0;
+
+            function showImage(index) {
+                if (index < 0) index = rowImages.length - 1;
+                if (index >= rowImages.length) index = 0;
+                currentIndex = index;
+                mainImg.src = rowImages[currentIndex];
+                overlay.resetZoom();
+                
+                // Update thumbnails
+                const thumbs = thumbContainer.querySelectorAll('.image-overlay-thumb');
+                thumbs.forEach((t, i) => {
+                    if (i === currentIndex) t.classList.add('active');
+                    else t.classList.remove('active');
+                });
+            }
+
+            // Rebuild thumbnails
+            thumbContainer.innerHTML = '';
+            rowImages.forEach((src, idx) => {
+                const img = document.createElement('img');
+                img.src = src;
+                img.className = 'image-overlay-thumb' + (idx === currentIndex ? ' active' : '');
+                img.onclick = (e) => {
+                    e.stopPropagation();
+                    showImage(idx);
+                };
+                thumbContainer.appendChild(img);
+            });
+
+            // Navigation
+            prevBtn.onclick = (e) => {
+                e.stopPropagation();
+                showImage(currentIndex - 1);
+            };
+            nextBtn.onclick = (e) => {
+                e.stopPropagation();
+                showImage(currentIndex + 1);
+            };
+
+            // Only show navigation if multiple images
+            if (rowImages.length > 1) {
+                prevBtn.style.display = 'flex';
+                nextBtn.style.display = 'flex';
+                thumbContainer.style.display = 'flex';
+            } else {
+                prevBtn.style.display = 'none';
+                nextBtn.style.display = 'none';
+                thumbContainer.style.display = 'none';
+            }
+
+            showImage(currentIndex);
+            overlay.classList.add('active');
+        }
+        
+        // Expose to window so onclick can use it if needed
+        window.openGSheetsImageOverlay = openImageOverlay;
+
+        // Function to parse URLs from a URL column cell, splitting by newlines
+        function parseUrlsFromCell(text) {
+            if (!text) return [];
+            
+            let cleanUrl = text;
+            if (cleanUrl.includes('<')) {
+                const temp = document.createElement('div');
+                temp.innerHTML = cleanUrl;
+                cleanUrl = temp.textContent || temp.innerText || '';
+            }
+            
+            // Split by newlines, filter empty, trim
+            return cleanUrl.split(/\r?\n/).map(line => line.trim()).filter(line => line !== '' && /^https?:\/\//i.test(line));
+        }
+
+        // Extract all images from the row's answer and question cells to build the context for the pop-up
+        function extractRowImagesForPopup(row, questionColumnIndices, answerColumnIndex) {
+            let rowImages = [];
+            
+            // Get from answers
+            const answerText = (row[answerColumnIndex] || '').trim();
+            if (answerText) {
+                // Use DOM parsing for robust image extraction from the answer HTML
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = answerText;
+                
+                // 1. Get all <img> tags
+                tempDiv.querySelectorAll('img').forEach(img => {
+                    if (img.src && isImageURL(img.src)) rowImages.push(img.src);
+                });
+                
+                // 2. Get all <a> tags pointing to images
+                tempDiv.querySelectorAll('a').forEach(anchor => {
+                    if (anchor.href && isImageURL(anchor.href)) rowImages.push(anchor.href);
+                });
+
+                // 3. Fallback: Check for raw URLs in text nodes if no images found
+                if (rowImages.length === 0) {
+                    const urlRegex = /(https?:\/\/[^\s<"']+)/g;
+                    let match;
+                    while ((match = urlRegex.exec(tempDiv.textContent)) !== null) {
+                        if (isImageURL(match[1])) rowImages.push(match[1]);
+                    }
+                }
+
+                // 4. Handle IMAGE formula specific urls
+                const formulaImages = extractImagesFromCell(answerText);
+                formulaImages.forEach(url => {
+                    if (isImageURL(url)) rowImages.push(url);
+                });
+            }
+            
+            // Get from questions if SHOW_ENLARGED_THUMBNAIL_IN_ANSWER_ROW is true
+            if (CONFIG.SHOW_ENLARGED_THUMBNAIL_IN_ANSWER_ROW) {
+                for (let i = 0; i < questionColumnIndices.length; i++) {
+                    const colIndex = questionColumnIndices[i];
+                    const cellValue = row[colIndex] || '';
+                    
+                    let cleanCellValue = cellValue.toString();
+                    if (cleanCellValue.includes('<')) {
+                        const temp = document.createElement('div');
+                        temp.innerHTML = cleanCellValue;
+                        cleanCellValue = temp.textContent || temp.innerText || '';
+                    }
+                    cleanCellValue = cleanCellValue.trim();
+
+                    const imageUrls = isDirectImageURL(cleanCellValue);
+                    if (imageUrls && imageUrls.length > 0) {
+                        rowImages.push(...imageUrls);
+                        break; // Only the first column with images
+                    }
+                }
+            }
+            
+            // Remove duplicates while preserving order
+            return [...new Set(rowImages)];
+        }
+
+        function convertURLsToLinks(text, isInCell = false, lazyMode = false, urlArray = [], rowImagesContext = []) {
             if (!text) return '';
             
-            // Special Case: Is it an =IMAGE() formula? (Handled separately as it's a specific GSheets feature)
+            // URL Index Tracker for priority mapping
+            let urlIndex = 0;
+
+            // ============================================
+            // 1. GSheets =IMAGE() Formula Handling
+            // ============================================
             const formulaImageUrls = extractImagesFromCell(text);
-            // We only trigger the early-return for formulas if they are the only thing that would be returned,
-            // or if it's a known =IMAGE formula which GSheets treats as the cell content.
             if (text.trim().startsWith('=IMAGE') && formulaImageUrls.length > 0) {
                 if (isInCell) {
                     const firstImageUrl = formulaImageUrls[0];
-                    return lazyMode ? generateLazyImagePlaceholder(firstImageUrl, isInCell) : generateImageTag(firstImageUrl, isInCell);
+                    let hasMappedUrl = urlIndex < urlArray.length;
+                    let popupEnabled = !hasMappedUrl;
+                    
+                    let html = lazyMode 
+                        ? generateLazyImagePlaceholder(firstImageUrl, isInCell, popupEnabled, rowImagesContext) 
+                        : generateImageTag(firstImageUrl, isInCell, popupEnabled, rowImagesContext);
+                    
+                    if (hasMappedUrl) {
+                        html = `<a href="${urlArray[urlIndex]}" target="_blank">${html}</a>`;
+                        urlIndex++;
+                    }
+                    return html;
                 } else {
                     return formulaImageUrls.map(url => {
-                        return lazyMode ? generateLazyImagePlaceholder(url, isInCell) : generateImageTag(url, isInCell);
+                        let hasMappedUrl = urlIndex < urlArray.length;
+                        let popupEnabled = !hasMappedUrl;
+                        
+                        let html = lazyMode 
+                            ? generateLazyImagePlaceholder(url, isInCell, popupEnabled, rowImagesContext) 
+                            : generateImageTag(url, isInCell, popupEnabled, rowImagesContext);
+                        
+                        if (hasMappedUrl) {
+                            html = `<a href="${urlArray[urlIndex]}" target="_blank">${html}</a>`;
+                            urlIndex++;
+                        }
+                        return html;
                     }).join('');
                 }
             }
@@ -779,23 +1109,17 @@
                 return match;
             });
             
-            // Regex to match URLs and specifically capture a following newline (\n or \r\n)
-            // Enhanced to handle &nbsp; (don't consume it) and strip trailing punctuation
+            // Main URL matching regex
             const urlRegex = /(href="|src="|href='|src=')((?:https?:\/\/)[^"']+)("|')|(https?:\/\/(?:[^\s<&]|&(?!nbsp;))+(?:[^\s<&.,?!:;]|\/))(\r\n|\n)?/g;
             
             result = result.replace(urlRegex, (match, attrPrefix, urlInAttr, quote, plainUrl, followingNewline) => {
-                // If attrPrefix is defined, it means we matched an existing HTML attribute
                 if (attrPrefix) return match;
+                let url = plainUrl.replace(/<\/?[aui]>|&nbsp;/gi, '');
                 
-                // Standalone URL
-                let url = plainUrl;
-                
-                // Clean up common Rich Text wrapping tags if they've leaked into the URL string
-                url = url.replace(/<\/?[aui]>|&nbsp;/gi, '');
-                
-                // YouTube Logic: Check for YouTube links to embed
+                // ============================================
+                // 2. YouTube URL Handling (Restored Original Logic)
+                // ============================================
                 if (isYouTubeURL(url)) {
-                    // Skip embedding for root domains
                     if (url === 'https://www.youtube.com' || url === 'https://www.youtube.com/' || 
                         url === 'https://youtube.com' || url === 'https://youtube.com/' ||
                         url === 'https://youtu.be' || url === 'https://youtu.be/') {
@@ -807,48 +1131,35 @@
                     let startTime = null;
                     let videoTitle = 'YouTube Video';
                     
-                    // Extract Video ID from watch?v= format
-                    let match = url.match(/[?&]v=([a-zA-Z0-9_-]+)/);
-                    if (match) {
-                        videoId = match[1];
-                    }
+                    let vMatch = url.match(/[?&]v=([a-zA-Z0-9_-]+)/);
+                    if (vMatch) videoId = vMatch[1];
                     
-                    // Extract Video ID from /shorts/ format
                     if (!videoId) {
-                        match = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/);
-                        if (match) videoId = match[1];
+                        let sMatch = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/);
+                        if (sMatch) videoId = sMatch[1];
                     }
 
-                    // Extract Video ID from youtu.be/ format
                     if (!videoId) {
-                        match = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
-                        if (match) videoId = match[1];
+                        let beMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
+                        if (beMatch) videoId = beMatch[1];
                     }
 
-                    // Extract Playlist ID
                     const listMatch = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
-                    if (listMatch) {
-                        playlistId = listMatch[1];
-                    }
+                    if (listMatch) playlistId = listMatch[1];
 
-                    // Extract Timestamp (t=)
                     const tMatch = url.match(/[?&]t=([0-9hms]+)/);
                     if (tMatch) {
                         const tVal = tMatch[1];
                         if (/^\d+$/.test(tVal)) {
-                            // Pure seconds
                             startTime = tVal;
                         } else {
-                            // Handle formats like 1m30s, 1h2m, etc.
                             let totalSeconds = 0;
                             const hMatch = tVal.match(/(\d+)h/);
                             const mMatch = tVal.match(/(\d+)m/);
                             const sMatch = tVal.match(/(\d+)s/);
-                            
                             if (hMatch) totalSeconds += parseInt(hMatch[1]) * 3600;
                             if (mMatch) totalSeconds += parseInt(mMatch[1]) * 60;
                             if (sMatch) totalSeconds += parseInt(sMatch[1]);
-                            
                             if (totalSeconds > 0) startTime = totalSeconds.toString();
                         }
                     }
@@ -856,19 +1167,16 @@
                     if (videoId || playlistId) {
                         let finalUrl;
                         if (videoId && playlistId) {
-                            // Priority format for starting at a specific video: embed/[VIDEO_ID]?list=[PLAYLIST_ID]
                             const params = new URLSearchParams();
                             params.set('list', playlistId);
                             if (startTime) params.set('start', startTime);
                             finalUrl = `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
                         } else if (playlistId) {
-                            // Fallback: embed/videoseries?list=[PLAYLIST_ID]
                             const params = new URLSearchParams();
                             params.set('list', playlistId);
                             if (startTime) params.set('start', startTime);
                             finalUrl = `https://www.youtube.com/embed/videoseries?${params.toString()}`;
                         } else {
-                            // Standard: embed/[VIDEO_ID]?start=[TIME]
                             const params = new URLSearchParams();
                             if (startTime) params.set('start', startTime);
                             const query = params.toString();
@@ -887,20 +1195,30 @@
                     }
                 }
                 
-                // Image Logic: Check if the URL is a direct image link
+                // ============================================
+                // 3. Image URL Handling (Separate Logic)
+                // ============================================
                 if (isImageURL(url)) {
+                    let hasMappedUrl = urlIndex < urlArray.length;
+                    let popupEnabled = !hasMappedUrl;
+                    
                     let imgHtml = '';
                     if (lazyMode) {
-                        imgHtml = generateLazyImagePlaceholder(url, isInCell);
+                        imgHtml = generateLazyImagePlaceholder(url, isInCell, popupEnabled, rowImagesContext);
                     } else {
-                        imgHtml = generateImageTag(url, isInCell);
+                        imgHtml = generateImageTag(url, isInCell, popupEnabled, rowImagesContext);
                     }
-                    // Return media HTML but DO NOT restore the newline (pruning it as requested)
+                    
+                    if (hasMappedUrl) {
+                        imgHtml = `<a href="${urlArray[urlIndex]}" target="_blank">${imgHtml}</a>`;
+                        urlIndex++;
+                    }
                     return imgHtml;
                 }
                 
-                // Default: Convert plain URL to clickable link
-                // Restore the newline for standard links so they stay on separate lines
+                // ============================================
+                // 4. Default Standard URL Handling
+                // ============================================
                 return `<a href="${url}" target="_blank">${url}</a>` + (followingNewline || '');
             });
             
@@ -996,11 +1314,25 @@
         
             items.forEach((item, index) => {
                 // Check if this item corresponds to the header row that should be kept visible
-                if (CONFIG.HEADER_ROW_NUMBER !== 0) { // Changed from !== null to !== 0
+                if (CONFIG.HEADER_ROW_NUMBER !== 0) { 
                     // Calculate the actual row number in the spreadsheet
-                    const actualRowNumber = CONFIG.STARTING_ROW + index;
-                    if (actualRowNumber === CONFIG.HEADER_ROW_NUMBER) {
+                    let isHeaderRow = false;
+                    if (CONFIG.HEADER_ROW_NUMBER < CONFIG.STARTING_ROW) {
+                        isHeaderRow = (index === 0);
+                    } else {
+                        const actualRowNumber = CONFIG.STARTING_ROW + index;
+                        isHeaderRow = (actualRowNumber === CONFIG.HEADER_ROW_NUMBER);
+                    }
+
+                    if (isHeaderRow) {
                         item.classList.remove('hidden');
+                        // Ensure the question row within the header is also not hidden by other styles
+                        const qRow = item.querySelector('.accordion-question-row');
+                        if (qRow) {
+                            qRow.classList.remove('hidden');
+                            qRow.style.display = ''; // Force reset display style
+                        }
+                        
                         lastVisibleItem = item;
                         visibleCount++;
                         return;
@@ -1641,6 +1973,9 @@
                     // Use header row alignment only if HEADER_ROW_NUMBER is explicitly set and this is that row
                     const alignmentToUse = (CONFIG.HEADER_ROW_NUMBER !== 0 && isHeaderRow) ? CONFIG.HEADER_ROW_COLUMNS_ALIGN : CONFIG.QUESTION_COLUMNS_ALIGN;
                     
+                    // Extract all images in this row to serve as context for the pop-up slider
+                    const rowImagesContext = extractRowImagesForPopup(row, questionColumnIndices, answerColumnIndex);
+                    
                     html += `<tbody class="accordion-item" id="${INSTANCE_ID}-item-${index}" data-animation="${textAnimation}" data-duration="${fadeDuration}" data-transition-speed="${transitionSpeed}" data-transition-effect="${transitionEffect}">`;
         
                     // Header rows are never expandable (no answers)
@@ -1744,20 +2079,37 @@
                             cleanUrl = temp.textContent || temp.innerText || '';
                         }
                         cleanUrl = cleanUrl.trim();
-                        const hasUrl = cleanUrl && /^https?:\/\//i.test(cleanUrl);
+                        const mappedUrls = parseUrlsFromCell((urlColIndex !== undefined && urlColIndex !== 'SHOW' && typeof urlColIndex === 'number') ? (row[urlColIndex] || '').toString() : '');
                         
-                        if (directImageUrl && hasUrl) {
-                            // Cell has image URL AND a link URL - wrap image in link
-                            // Note: directImageUrl is an array here
-                            const imageTag = generateImageTag(directImageUrl[0], true);
-                            linkedValue = (isHeaderRow ? "" : questionPrefix) + `<a href="${cleanUrl}" target="_blank">${imageTag}</a>`;
-                        } else if (hasUrl) {
-                            // Cell has link URL but no image - wrap text in link
-                            const processedValue = convertURLsToLinks(cellValue, true, false);
-                            linkedValue = (isHeaderRow ? "" : questionPrefix) + `<a href="${cleanUrl}" target="_blank">${processedValue}</a>`;
+                        if (directImageUrl && mappedUrls.length > 0) {
+                            // Cell has image URLs AND link URLs
+                            // Since this is the small thumbnail cell, ONLY show the first image
+                            let firstUrl = directImageUrl[0];
+                            let hasMappedUrl = mappedUrls.length > 0;
+                            let popupEnabled = !hasMappedUrl;
+                            let imgHtml = generateImageTag(firstUrl, true, popupEnabled, rowImagesContext);
+                            if (hasMappedUrl) {
+                                imgHtml = `<a href="${mappedUrls[0]}" target="_blank">${imgHtml}</a>`;
+                            }
+                            linkedValue = (isHeaderRow ? "" : questionPrefix) + imgHtml;
+                        } else if (directImageUrl) {
+                            // Cell has image URLs but NO link URLs
+                            // Only show the first image
+                            let firstUrl = directImageUrl[0];
+                            let imgHtml = generateImageTag(firstUrl, true, true, rowImagesContext);
+                            linkedValue = (isHeaderRow ? "" : questionPrefix) + imgHtml;
+                        } else if (mappedUrls.length > 0) {
+                            // Cell has link URL(s) but no image
+                            const processedValue = convertURLsToLinks(cellValue, true, false, mappedUrls, rowImagesContext);
+                            // We only wrap the whole text if it's a single URL and the cell itself isn't converted well
+                            if (processedValue === cellValue) {
+                                linkedValue = (isHeaderRow ? "" : questionPrefix) + `<a href="${mappedUrls[0]}" target="_blank">${processedValue}</a>`;
+                            } else {
+                                linkedValue = (isHeaderRow ? "" : questionPrefix) + processedValue;
+                            }
                         } else {
                             // No link URL - use existing URL/image detection. No lazy loading for question cells.
-                            const processedValue = convertURLsToLinks(cellValue, true, false);
+                            const processedValue = convertURLsToLinks(cellValue, true, false, [], rowImagesContext);
                             linkedValue = (isHeaderRow ? "" : questionPrefix) + processedValue;
                         }
 
@@ -1843,7 +2195,7 @@
                     
                     if (answer) {
                         const answerPrefix = CONFIG.ANSWER_PREFIX || '';
-                        let processedAnswer = convertURLsToLinks(answer, false, true);
+                        let processedAnswer = convertURLsToLinks(answer, false, true, [], rowImagesContext);
                         
                         // FINAL CLEANUP: Ensure no lingering empty spans or tags remain from rich text runs
                         processedAnswer = processedAnswer.replace(/<span><\/span>/gi, '');
@@ -1880,15 +2232,20 @@
                                         temp.innerHTML = cleanUrl;
                                         cleanUrl = temp.textContent || temp.innerText || '';
                                     }
-                                    cleanUrl = cleanUrl.trim();
-                                    const hasUrl = cleanUrl && /^https?:\/\//i.test(cleanUrl);
+                                    const mappedUrls = parseUrlsFromCell(rawUrl);
 
                                     // Stack all images from the first column that has images
                                     enlargedThumbnail = '<div class="accordion-answer-thumbnail">';
-                                    imageUrls.forEach(url => {
-                                        const imgTag = `<img src="${url}" alt="Enlarged thumbnail" loading="lazy" style="display: block; margin-bottom: 5px;">`;
-                                        if (hasUrl) {
-                                            enlargedThumbnail += `<a href="${cleanUrl}" target="_blank">${imgTag}</a>`;
+                                    imageUrls.forEach((url, imgIdx) => {
+                                        let hasMappedUrl = imgIdx < mappedUrls.length;
+                                        let popupEnabled = !hasMappedUrl;
+                                        
+                                        const popupData = popupEnabled ? ` onclick='window.openGSheetsImageOverlay("${url}", ${JSON.stringify(rowImagesContext).replace(/"/g, '"')})'` : '';
+                                        let cursorStyle = popupEnabled ? 'cursor: pointer;' : '';
+                                        
+                                        let imgTag = `<img src="${url}" alt="Enlarged thumbnail" loading="lazy" style="display: block; margin-bottom: 5px; ${cursorStyle}"${popupData}>`;
+                                        if (hasMappedUrl) {
+                                            enlargedThumbnail += `<a href="${mappedUrls[imgIdx]}" target="_blank">${imgTag}</a>`;
                                         } else {
                                             enlargedThumbnail += imgTag;
                                         }
