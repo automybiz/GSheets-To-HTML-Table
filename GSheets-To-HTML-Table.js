@@ -910,6 +910,17 @@
                     imgWrapper.style.transformOrigin = `center center`;
                     updateZoom();
                 };
+
+                // Keyboard Navigation
+                document.addEventListener('keydown', (e) => {
+                    if (!overlay.classList.contains('active')) return;
+
+                    if (e.key === 'ArrowLeft') {
+                        overlay.showImage(overlay.currentIndex - 1);
+                    } else if (e.key === 'ArrowRight') {
+                        overlay.showImage(overlay.currentIndex + 1);
+                    }
+                });
             }
 
             // Populate data
@@ -925,6 +936,7 @@
                 if (index < 0) index = rowImages.length - 1;
                 if (index >= rowImages.length) index = 0;
                 currentIndex = index;
+                overlay.currentIndex = currentIndex;
                 mainImg.src = rowImages[currentIndex];
                 overlay.resetZoom();
                 
@@ -935,6 +947,10 @@
                     else t.classList.remove('active');
                 });
             }
+
+            // Expose showImage and currentIndex to the overlay object for keyboard nav
+            overlay.showImage = showImage;
+            overlay.currentIndex = currentIndex;
 
             // Rebuild thumbnails
             thumbContainer.innerHTML = '';
