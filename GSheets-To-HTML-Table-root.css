@@ -40,6 +40,7 @@
 
         /* Layout */
         --accordion-spacing: 0px;
+        --scroll-offset: 1px; /* Number of pixels from the top of the screen to stop scrolling at when clicking a row */
         --border-radius: 8px; /* Rounded Table Corners */
         --question-padding-horizontal: 11px; /* 11px does pretty well by default */
         --question-padding-vertical: 6px;    /* 6px does pretty well by default */

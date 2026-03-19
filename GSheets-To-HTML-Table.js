@@ -111,6 +111,38 @@
         // ============================================
         // UTILITY FUNCTIONS
         // ============================================
+        function customSmoothScroll(targetElement, duration = 600) {
+            const startPosition = window.pageYOffset;
+            let startTime = null;
+
+            // Read CSS custom property for scroll offset
+            const rawOffset = getComputedStyle(document.documentElement).getPropertyValue('--scroll-offset').trim();
+            const scrollOffset = parseInt(rawOffset, 10) || 0;
+
+            // easeOutQuart curve: starts fast, glides to a smooth stop without stalling
+            function easeOutQuart(t) {
+                return 1 - Math.pow(1 - t, 4);
+            }
+
+            function animation(currentTime) {
+                if (startTime === null) startTime = currentTime;
+                const timeElapsed = currentTime - startTime;
+                let progress = timeElapsed / duration;
+                if (progress > 1) progress = 1;
+
+                // Dynamically calculate target position on every frame to adapt to expanding/collapsing content
+                const targetPosition = targetElement.getBoundingClientRect().top + window.pageYOffset - scrollOffset;
+                const distance = targetPosition - startPosition;
+
+                window.scrollTo(0, startPosition + distance * easeOutQuart(progress));
+
+                if (timeElapsed < duration) {
+                    requestAnimationFrame(animation);
+                }
+            }
+            requestAnimationFrame(animation);
+        }
+
         function getUrlParam(name) {
             // Standard approach
             const urlParams = new URLSearchParams(window.location.search);
@@ -540,67 +572,29 @@
         }
         
         // ============================================
-        // HOVER EVENT MANAGEMENT
+        // CLICK EVENT MANAGEMENT
         // ============================================
-        const hoverTimeouts = new Map();
-        const HOVER_DELAY = 300; // milliseconds before loading content on hover
-        
-        function addHoverListeners() {
+        function addClickListeners() {
             const questionRows = document.querySelectorAll('#' + INSTANCE_ID + '-content .accordion-question-row');
             
             questionRows.forEach(row => {
                 // Skip header rows and rows without answers
                 if (row.classList.contains('no-answer')) return;
                 
-                row.addEventListener('mouseenter', function(e) {
-                    const item = this.closest('.accordion-item');
-                    if (!item) return;
-                    
-                    const itemId = item.id;
-                    if (hoverTimeouts.has(itemId)) {
-                        clearTimeout(hoverTimeouts.get(itemId));
-                    }
-                    
-                    const timeoutId = setTimeout(() => {
-                        processLazyContent(item);
-                        hoverTimeouts.delete(itemId);
-                    }, HOVER_DELAY);
-                    
-                    hoverTimeouts.set(itemId, timeoutId);
-                });
-                
-                row.addEventListener('mouseleave', function(e) {
-                    const item = this.closest('.accordion-item');
-                    if (!item) return;
-                    
-                    const itemId = item.id;
-                    if (hoverTimeouts.has(itemId)) {
-                        clearTimeout(hoverTimeouts.get(itemId));
-                        hoverTimeouts.delete(itemId);
-                    }
-                });
-                
-                // Also load content when clicking to expand
+                // Load content when clicking to expand
                 row.addEventListener('click', function(e) {
                     // Don't interfere with link clicks
                     if (e.target.tagName === 'A' || e.target.closest('a')) return;
                     
                     const item = this.closest('.accordion-item');
                     if (item) {
-                        // Process immediately on click (no delay)
+                        // Process immediately on click
                         processLazyContent(item);
-                        
-                        // Clear any pending hover timeouts
-                        const itemId = item.id;
-                        if (hoverTimeouts.has(itemId)) {
-                            clearTimeout(hoverTimeouts.get(itemId));
-                            hoverTimeouts.delete(itemId);
-                        }
                     }
                 });
             });
             
-            console.log('[Accordion] Added hover listeners to', questionRows.length, 'question rows');
+            console.log('[Accordion] Added click listeners to', questionRows.length, 'question rows');
         }
         
         // ============================================
@@ -780,6 +774,11 @@
         
         // Function to create or update the global image overlay
         function openImageOverlay(clickedImgSrc, rowImages) {
+            // Handle backwards compatibility if rowImages is an array of strings instead of objects
+            if (rowImages.length > 0 && typeof rowImages[0] === 'string') {
+                rowImages = rowImages.map(src => ({ src: src, link: null }));
+            }
+
             let overlay = document.getElementById('gsheets-image-overlay');
             if (!overlay) {
                 overlay = document.createElement('div');
@@ -788,6 +787,8 @@
                 
                 const navIconSvg = CONFIG.IMAGE_PREV_AND_NEXT_ICON_SVG || `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" /></svg>`;
                 
+                const linkIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
+
                 overlay.innerHTML = `
                     <div class="image-overlay-zoom-text" id="gsheets-image-zoom-text">100%</div>
                     
@@ -801,8 +802,12 @@
                     <div class="image-overlay-img-container" id="gsheets-image-container">
                         <div id="gsheets-image-wrapper" style="position: relative; display: inline-block; transition: transform 0.1s ease-out; transform-origin: center center;">
                             <img src="" class="image-overlay-img" id="gsheets-main-img">
+                            <a id="gsheets-image-link-icon" class="image-overlay-link-icon" target="_blank" style="display: none;">${linkIconSvg}</a>
                             <div class="image-overlay-close">&times;</div>
                         </div>
+                    </div>
+                    <div class="image-overlay-url-bar" id="gsheets-image-url-bar" style="display: none;">
+                        <a id="gsheets-image-url-text" target="_blank"></a>
                     </div>
                     <div class="image-overlay-thumbnails" id="gsheets-overlay-thumbnails"></div>
                 `;
@@ -876,7 +881,8 @@
                 });
 
                 // Mouse Wheel Zooming
-                imgWrapper.addEventListener('wheel', (e) => {
+                overlay.addEventListener('wheel', (e) => {
+                    // Always prevent background scrolling when overlay is active
                     e.preventDefault();
                     
                     // Get mouse position relative to image
@@ -884,14 +890,27 @@
                     const mouseX = e.clientX - rect.left;
                     const mouseY = e.clientY - rect.top;
 
-                    // Calculate percentage relative to image dimensions
-                    const xPercent = (mouseX / rect.width) * 100;
-                    const yPercent = (mouseY / rect.height) * 100;
+                    // Check if mouse is within image bounds
+                    const isOverImage = (
+                        mouseX >= 0 && 
+                        mouseX <= rect.width && 
+                        mouseY >= 0 && 
+                        mouseY <= rect.height
+                    );
 
-                    // Only update transform origin if we are at scale 1 (starting zoom) 
-                    if (currentScale === 1) {
-                        imgWrapper.style.transformOrigin = `${xPercent}% ${yPercent}%`;
+                    let xPercent, yPercent;
+                    if (isOverImage) {
+                        // Zoom to mouse position
+                        xPercent = (mouseX / rect.width) * 100;
+                        yPercent = (mouseY / rect.height) * 100;
+                    } else {
+                        // Zoom to center
+                        xPercent = 50;
+                        yPercent = 50;
                     }
+
+                    // Update transform origin to maintain zoom focus
+                    imgWrapper.style.transformOrigin = `${xPercent}% ${yPercent}%`;
 
                     if (e.deltaY < 0) {
                         currentScale = Math.min(maxScale, currentScale + zoomStep);
@@ -902,7 +921,7 @@
                         }
                     }
                     updateZoom();
-                });
+                }, { passive: false });
 
                 // Reset zoom when navigating
                 overlay.resetZoom = () => {
@@ -925,11 +944,14 @@
 
             // Populate data
             const mainImg = overlay.querySelector('#gsheets-main-img');
+            const linkIcon = overlay.querySelector('#gsheets-image-link-icon');
+            const urlBar = overlay.querySelector('#gsheets-image-url-bar');
+            const urlText = overlay.querySelector('#gsheets-image-url-text');
             const thumbContainer = overlay.querySelector('#gsheets-overlay-thumbnails');
             const prevBtn = overlay.querySelector('#gsheets-overlay-prev');
             const nextBtn = overlay.querySelector('#gsheets-overlay-next');
 
-            let currentIndex = rowImages.indexOf(clickedImgSrc);
+            let currentIndex = rowImages.findIndex(img => img.src === clickedImgSrc);
             if (currentIndex === -1) currentIndex = 0;
 
             function showImage(index) {
@@ -937,8 +959,28 @@
                 if (index >= rowImages.length) index = 0;
                 currentIndex = index;
                 overlay.currentIndex = currentIndex;
-                mainImg.src = rowImages[currentIndex];
+                
+                const currentImgData = rowImages[currentIndex];
+                // Safely handle both object {src, link} and string URL formats
+                const imgSrc = currentImgData.src || currentImgData;
+                const imgLink = currentImgData.link || null;
+
+                mainImg.src = imgSrc;
                 overlay.resetZoom();
+
+                // Handle Link Icon and URL Bar
+                if (imgLink) {
+                    linkIcon.href = imgLink;
+                    linkIcon.style.display = 'flex';
+                    
+                    urlText.href = imgLink;
+                    urlText.textContent = imgLink;
+                    urlText.title = imgLink;
+                    urlBar.style.display = 'block';
+                } else {
+                    linkIcon.style.display = 'none';
+                    urlBar.style.display = 'none';
+                }
                 
                 // Update thumbnails
                 const thumbs = thumbContainer.querySelectorAll('.image-overlay-thumb');
@@ -954,9 +996,9 @@
 
             // Rebuild thumbnails
             thumbContainer.innerHTML = '';
-            rowImages.forEach((src, idx) => {
+            rowImages.forEach((imgData, idx) => {
                 const img = document.createElement('img');
-                img.src = src;
+                img.src = imgData.src;
                 img.className = 'image-overlay-thumb' + (idx === currentIndex ? ' active' : '');
                 img.onclick = (e) => {
                     e.stopPropagation();
@@ -1009,43 +1051,19 @@
         }
 
         // Extract all images from the row's answer and question cells to build the context for the pop-up
-        function extractRowImagesForPopup(row, questionColumnIndices, answerColumnIndex) {
+        function extractRowImagesForPopup(row, questionColumnIndices, answerColumnIndex, urlColumnIndices = []) {
             let rowImages = [];
-            
-            // Get from answers
-            const answerText = (row[answerColumnIndex] || '').trim();
-            if (answerText) {
-                // Use DOM parsing for robust image extraction from the answer HTML
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = answerText;
-                
-                // 1. Get all <img> tags
-                tempDiv.querySelectorAll('img').forEach(img => {
-                    if (img.src && isImageURL(img.src)) rowImages.push(img.src);
-                });
-                
-                // 2. Get all <a> tags pointing to images
-                tempDiv.querySelectorAll('a').forEach(anchor => {
-                    if (anchor.href && isImageURL(anchor.href)) rowImages.push(anchor.href);
-                });
+            let seenSrcs = new Set();
 
-                // 3. Fallback: Check for raw URLs in text nodes if no images found
-                if (rowImages.length === 0) {
-                    const urlRegex = /(https?:\/\/[^\s<"']+)/g;
-                    let match;
-                    while ((match = urlRegex.exec(tempDiv.textContent)) !== null) {
-                        if (isImageURL(match[1])) rowImages.push(match[1]);
-                    }
+            function addImage(src, link = null) {
+                if (!seenSrcs.has(src)) {
+                    seenSrcs.add(src);
+                    rowImages.push({ src: src, link: link });
                 }
-
-                // 4. Handle IMAGE formula specific urls
-                const formulaImages = extractImagesFromCell(answerText);
-                formulaImages.forEach(url => {
-                    if (isImageURL(url)) rowImages.push(url);
-                });
             }
             
-            // Get from questions if SHOW_ENLARGED_THUMBNAIL_IN_ANSWER_ROW is true
+            // Get from questions first if SHOW_ENLARGED_THUMBNAIL_IN_ANSWER_ROW is true
+            // This maintains order (thumbnails first) and captures their specific links
             if (CONFIG.SHOW_ENLARGED_THUMBNAIL_IN_ANSWER_ROW) {
                 for (let i = 0; i < questionColumnIndices.length; i++) {
                     const colIndex = questionColumnIndices[i];
@@ -1061,14 +1079,62 @@
 
                     const imageUrls = isDirectImageURL(cleanCellValue);
                     if (imageUrls && imageUrls.length > 0) {
-                        rowImages.push(...imageUrls);
+                        // Check if this column has mapped URLs
+                        const urlColIndex = urlColumnIndices[i];
+                        const rawUrl = (urlColIndex !== undefined && urlColIndex !== 'SHOW' && typeof urlColIndex === 'number') ? (row[urlColIndex] || '').toString() : '';
+                        const mappedUrls = parseUrlsFromCell(rawUrl);
+
+                        imageUrls.forEach((url, imgIdx) => {
+                            let link = imgIdx < mappedUrls.length ? mappedUrls[imgIdx] : null;
+                            addImage(url, link);
+                        });
                         break; // Only the first column with images
                     }
                 }
             }
+
+            // Get from answers
+            const answerText = (row[answerColumnIndex] || '').trim();
+            if (answerText) {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = answerText;
+                
+                // 1. Get <a> tags wrapping <img>
+                tempDiv.querySelectorAll('a').forEach(anchor => {
+                    const img = anchor.querySelector('img');
+                    if (img && img.src && isImageURL(img.src)) {
+                        addImage(img.src, anchor.href);
+                        // Remove from DOM so it's not picked up by the next step
+                        img.remove();
+                    } else if (anchor.href && isImageURL(anchor.href)) {
+                        addImage(anchor.href, null); // Direct link to image without an img tag
+                    }
+                });
+
+                // 2. Get remaining <img> tags
+                tempDiv.querySelectorAll('img').forEach(img => {
+                    if (img.src && isImageURL(img.src)) {
+                        addImage(img.src, null);
+                    }
+                });
+
+                // 3. Fallback: Check for raw URLs in text nodes if no images found
+                if (rowImages.length === 0) {
+                    const urlRegex = /(https?:\/\/[^\s<"']+)/g;
+                    let match;
+                    while ((match = urlRegex.exec(tempDiv.textContent)) !== null) {
+                        if (isImageURL(match[1])) addImage(match[1], null);
+                    }
+                }
+
+                // 4. Handle IMAGE formula specific urls
+                const formulaImages = extractImagesFromCell(answerText);
+                formulaImages.forEach(url => {
+                    if (isImageURL(url)) addImage(url, null);
+                });
+            }
             
-            // Remove duplicates while preserving order
-            return [...new Set(rowImages)];
+            return rowImages;
         }
 
         function convertURLsToLinks(text, isInCell = false, lazyMode = false, urlArray = [], rowImagesContext = []) {
@@ -1990,7 +2056,7 @@
                     const alignmentToUse = (CONFIG.HEADER_ROW_NUMBER !== 0 && isHeaderRow) ? CONFIG.HEADER_ROW_COLUMNS_ALIGN : CONFIG.QUESTION_COLUMNS_ALIGN;
                     
                     // Extract all images in this row to serve as context for the pop-up slider
-                    const rowImagesContext = extractRowImagesForPopup(row, questionColumnIndices, answerColumnIndex);
+                    const rowImagesContext = extractRowImagesForPopup(row, questionColumnIndices, answerColumnIndex, urlColumnIndices);
                     
                     html += `<tbody class="accordion-item" id="${INSTANCE_ID}-item-${index}" data-animation="${textAnimation}" data-duration="${fadeDuration}" data-transition-speed="${transitionSpeed}" data-transition-effect="${transitionEffect}">`;
         
@@ -2101,12 +2167,9 @@
                             // Cell has image URLs AND link URLs
                             // Since this is the small thumbnail cell, ONLY show the first image
                             let firstUrl = directImageUrl[0];
-                            let hasMappedUrl = mappedUrls.length > 0;
-                            let popupEnabled = !hasMappedUrl;
+                            let popupEnabled = true; // Always enable popup
                             let imgHtml = generateImageTag(firstUrl, true, popupEnabled, rowImagesContext);
-                            if (hasMappedUrl) {
-                                imgHtml = `<a href="${mappedUrls[0]}" target="_blank">${imgHtml}</a>`;
-                            }
+                            // Do not wrap in <a> tag here anymore, handle link in overlay
                             linkedValue = (isHeaderRow ? "" : questionPrefix) + imgHtml;
                         } else if (directImageUrl) {
                             // Cell has image URLs but NO link URLs
@@ -2253,15 +2316,27 @@
                                     // Stack all images from the first column that has images
                                     enlargedThumbnail = '<div class="accordion-answer-thumbnail">';
                                     imageUrls.forEach((url, imgIdx) => {
+                                        let popupEnabled = true; // Always enable popup
                                         let hasMappedUrl = imgIdx < mappedUrls.length;
-                                        let popupEnabled = !hasMappedUrl;
                                         
-                                        const popupData = popupEnabled ? ` onclick='window.openGSheetsImageOverlay("${url}", ${JSON.stringify(rowImagesContext).replace(/"/g, '"')})'` : '';
-                                        let cursorStyle = popupEnabled ? 'cursor: pointer;' : '';
+                                        const popupData = ` onclick='window.openGSheetsImageOverlay("${url}", ${JSON.stringify(rowImagesContext).replace(/"/g, '"')})'`;
+                                        let cursorStyle = 'cursor: pointer;';
                                         
                                         let imgTag = `<img src="${url}" alt="Enlarged thumbnail" loading="lazy" style="display: block; margin-bottom: 5px; ${cursorStyle}"${popupData}>`;
+                                        
+                                        // NEVER wrap in <a> tag here, we want it to open the overlay
                                         if (hasMappedUrl) {
-                                            enlargedThumbnail += `<a href="${mappedUrls[imgIdx]}" target="_blank">${imgTag}</a>`;
+                                            const linkIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 20px; height: 20px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
+                                            
+                                            // Wrap in relative container to position the icon
+                                            enlargedThumbnail += `
+                                                <div style="position: relative; display: block; margin-bottom: 5px;">
+                                                    ${imgTag.replace('margin-bottom: 5px;', 'margin-bottom: 0;')}
+                                                    <a href="${mappedUrls[imgIdx]}" target="_blank" class="thumbnail-link-icon" title="${mappedUrls[imgIdx]}">
+                                                        ${linkIconSvg}
+                                                    </a>
+                                                </div>
+                                            `;
                                         } else {
                                             enlargedThumbnail += imgTag;
                                         }
@@ -2291,8 +2366,8 @@
             html += '</table></div>';
             content.innerHTML = html;
             
-            // Add hover event listeners for lazy loading
-            addHoverListeners();
+            // Add click event listeners for lazy loading
+            addClickListeners();
             
             // Mark the last item as last-visible-item on initial load
             const allItems = content.querySelectorAll('.accordion-item');
@@ -2405,6 +2480,14 @@
                     }
 
                     item.classList.add('active');
+
+                    // Handle Smooth Scrolling
+                    if (CONFIG.SCROLL_TO_ROW_ON_CLICK !== false) {
+                        // Small timeout to let the browser begin the expansion
+                        setTimeout(() => {
+                            customSmoothScroll(item, 555); 
+                        }, 50);
+                    }
                 } else {
                     // Closing - remove instantly
                     

@@ -22,7 +22,7 @@ A lightweight, highly configurable JavaScript library that transforms Google She
 - **Auto Image Detection**: Automatically converts image URLs or `=IMAGE()` formulas into thumbnails. Supports multiple image URLs per cell (one per line).
 - **Enlarged Answer Thumbnails**: Optionally display all images from a row's leftmost image column as a vertically stacked gallery in the expanded answer row.
 - **YouTube Embedding**: Detects YouTube URLs and converts them into embedded video players while also preserving time stamps in seconds. ie: ( ?t=123s ). Also works for Shorts and Playlists. Note: YouTube Playlist URL's don't need the ( &index= ) parameter. You can still use it if you want but the index param will be stripped out of the url to keep things neat and tidy. You can also load the default video you want to start playing in the playlist by defining that video using the ( ?v= ) param. 
-- **Lazy Loading**: High-performance loading for images and videos (loads only when hovered or clicked).
+- **Lazy Loading**: High-performance loading for images and videos (loads only when clicked to expand the row).
 - **Auto-Linking**: Converts plain text URLs into clickable, trackable links.
 
 ### 🎨 Design & Animation

@@ -399,6 +399,35 @@
 		border-radius: var(--answer-image-big-thumb-border-radius);
 	}
     
+    .thumbnail-link-icon {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        width: 36px;
+        height: 36px;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        z-index: 5;
+        transition: transform 0.2s ease, background 0.2s ease;
+        text-decoration: none !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+    
+    .thumbnail-link-icon:hover {
+        transform: scale(1.1);
+        background: rgba(0, 0, 0, 0.8);
+        color: #00ccff;
+    }
+    
+    .thumbnail-link-icon svg {
+        display: block;
+    }
+    
     /* Text effect animations */
     @keyframes slideFromLeft {
         from { transform: translateX(-30px); opacity: 0; }
@@ -612,8 +641,8 @@
 
     .image-overlay-close {
         position: absolute;
-        top: -10px;
-        right: 20px;
+        top: -7px;
+        right: 30px;
         color: var(--overlay-zoom-text-color);
         font-size: 30px;
         cursor: pointer;
@@ -666,6 +695,66 @@
 
     .image-overlay-img:hover {
         box-shadow: 0 0 var(--overlay-image-glow-hover-size) color-mix(in srgb, var(--overlay-image-glow-hover-color), transparent calc(100% * (1 - var(--overlay-image-glow-hover-opacity))));
+    }
+
+    .image-overlay-link-icon {
+        position: absolute;
+        bottom: -5px;
+        right: 30px;
+        color: var(--overlay-zoom-text-color) !important;
+        background: color-mix(in srgb, var(--overlay-zoom-text-bg-color), transparent calc(100% * (1 - var(--overlay-zoom-text-bg-opacity)))) !important;
+        width: 40px !important;
+        height: 40px !important;
+        display: none; /* Controlled by JS */
+        justify-content: center;
+        align-items: center;
+        border-radius: 50%;
+        cursor: pointer;
+        z-index: 5;
+        transition: transform 0.2s ease, background 0.2s ease;
+        text-decoration: none !important;
+    }
+
+    .image-overlay-link-icon:hover {
+        transform: scale(1.1);
+        background: var(--overlay-nav-button-hover-bg) !important;
+    }
+
+    .image-overlay-link-icon svg {
+        width: 20px;
+        height: 20px;
+        display: block;
+    }
+    
+    .image-overlay-url-bar {
+        width: 90vw;
+        text-align: center;
+        padding: 5px 0;
+        margin-top: 5px;
+        z-index: 10;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 30px;
+        position: relative;
+    }
+    
+    #gsheets-image-url-text {
+        color: #0099ff;
+        text-decoration: underline;
+        font-size: 18px;
+        display: inline-block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+        margin: 0 auto;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        pointer-events: auto;
+    }
+    
+    #gsheets-image-url-text:hover {
+        color: #00ccff;
     }
 
     .image-overlay-nav {

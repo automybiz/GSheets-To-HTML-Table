@@ -100,6 +100,7 @@
         //ANSWER_PREFIX: '',
         ANSWER_PREFIX: '<u><b>Answer:</b></u><br>', // HTML/text to show before answer content (empty string to disable)
         SHOW_ENLARGED_THUMBNAIL_IN_ANSWER_ROW: false, // Set to true to show enlarged thumbnail in answer row
+        SCROLL_TO_ROW_ON_CLICK: true, // Smoothly scrolls the page to position the clicked question row at the top
 
         // Animation Configuration
         ANSWER_TRANSITION_SPEED: 555, // Transition speed in milliseconds (e.g., 200, 400, 600, 800)
@@ -111,6 +112,17 @@
         // Filter Conditions
         FILTER_CONDITIONS: [
             { column: 'A', condition: 'equals', value: 'PUBLIC' },
+            // { column: 'B', condition: 'does not equal', value: 'HIDDEN' },
+            // { column: 'C', condition: 'contains', value: 'example' },
+            // { column: 'D', condition: 'does not contain', value: 'deprecated' },
+            // { column: 'E', condition: 'starts with', value: '202' },
+            // { column: 'F', condition: 'ends with', value: '.jpg' },
+            // { column: 'G', condition: 'is empty', value: '' },
+            // { column: 'H', condition: 'is not empty', value: '' },
+            // { column: 'I', condition: 'greater than', value: '10' },
+            // { column: 'J', condition: 'less than', value: '100' },
+            // { column: 'K', condition: 'greater than or equal', value: '5' },
+            // { column: 'L', condition: 'less than or equal', value: '50' }
         ] 
     };
     </script>
