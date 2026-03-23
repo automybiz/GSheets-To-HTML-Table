@@ -361,7 +361,7 @@
             
             // Check for known image hosting domains
             const googleStoragePattern = /https:\/\/storage\.googleapis\.com\//i;
-            const googleDrivePattern = /https:\/\/drive\.google\.com\//i;
+            const googleDrivePattern = /https:\/\/drive\.google\.com\/(?:uc\?|thumbnail\?|file\/d\/)/i;
             const googleUserContentPattern = /https:\/\/lh[0-9]+\.googleusercontent\.com\//i;
             
             return googleStoragePattern.test(trimmedUrl) || 
