@@ -1,0 +1,71 @@
+# Google Sheets To HTML Table - Conductor Rules
+
+This file contains the logic and rules for maintaining and developing the Google Sheets To HTML Table project. Its goal is to prevent breaking existing functionality while allowing for new feature development.
+
+## Project Philosophy
+- **Lightweight & Dependency-Free**: Pure vanilla JavaScript only. No jQuery, Bootstrap, or external libraries.
+- **Config-Driven**: Almost all behavior is controlled via the `CONFIG` object provided in the HTML.
+- **Resilient**: Robust error handling, auto-retries, and cache-busting are core to the user experience.
+
+## Core Features Breakdown
+
+### 1. Regex Processing (YouTube & Images)
+**CRITICAL RULE**: The YouTube and Image regex processing MUST stay separate. Do not attempt to merge them into a single "media" regex.
+
+#### YouTube Regex Functionality
+- **Location**: Inside `convertURLsToLinks` function.
+- **Detection**: Uses `isYouTubeURL(url)` to identify links containing `youtube.com` or `youtu.be`.
+- **Parsing Logic**:
+  - Extracts `videoId` from standard URLs, Shorts (`/shorts/`), and shortened `youtu.be` links.
+  - Extracts `playlistId` from `list=` parameter.
+  - **Timestamp Support**: Parses `t=` parameters (e.g., `?t=123s`, `?t=1m30s`, `?t=3600`) and converts them to total seconds for the YouTube Embed `start` parameter.
+  - **Playlist Neatness**: Strips `index=` parameters to keep URLs tidy while allowing `v=` to define the starting video.
+- **Rendering**: Converts URLs into `<iframe>` embeds with configurable width/height.
+
+#### Image Regex Functionality
+- **Location**: Inside `convertURLsToLinks`, `isImageURL`, and `extractImagesFromCell`.
+- **Detection**: Checks for standard image extensions (`.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.webp`, `.svg`) and specific Google hosting domains (Google Drive, Google Storage, Google User Content).
+- **=IMAGE() Formula Support**: Specifically handles Google Sheets `=IMAGE("url")` syntax by extracting the URL.
+- **Multi-Image Support**: Allows multiple image URLs per cell, separated by newlines.
+- **Rendering**: Converts URLs into `<img>` tags with lazy loading support.
+
+### 2. Lazy Loading System
+- **Trigger**: Content (Images/Videos) is only loaded when a row is clicked to expand.
+- **Placeholders**: The script generates `lazy-image-placeholder` or `lazy-youtube-placeholder` divs initially.
+- **Processing**: `processLazyContent(rowElement)` swaps placeholders for actual `<img>` or `<iframe>` tags instantly upon expansion.
+
+### 3. Expansion Logic (`SHOW_HIDE_ON_PAGE_LOAD`)
+- **Keywords**: `show`, `hide`, `random`.
+- **Indexed**: `show#X` (e.g., `show#1` expands the first data row).
+- **Offset**: `show>X` (expands all rows after index X).
+- **Threshold**: `hide>X` (hides all if count > X, otherwise shows all).
+- **Substring**: `show=[Substring]` (expands rows containing specific text).
+- **URL Parameters**: Users can override initial expansion via URL parameters (default `?show=`).
+
+### 4. CSS Sandwich 🥪 (The Loader)
+- `Cache-Busting-Loader.js` manages the injection order.
+- **Order**: `GSheets-To-HTML-Table-root.css` -> `[User Overrides]` -> `GSheets-To-HTML-Table-rules.css`.
+- This ensures user overrides are respected while still allowing `rules.css` to define component-specific logic.
+
+## Maintenance Rules
+
+1. **Vanilla JS Only**: Never add external dependencies.
+2. **Backward Compatibility**: Any change to `CONFIG` options must be additive or include a fallback to the previous behavior.
+3. **DOM Anchoring**: Always use the unique `INSTANCE_ID` for element IDs and global function names (e.g., `window['toggleAccordion_' + INSTANCE_ID]`) to support multiple tables on one page.
+4. **Rich Text Integrity**: The `applyTextFormatting` and `processRichTextResponse` functions are delicate. They handle GSheets JSON format runs. Test thoroughly if modifying these.
+5. **Search Highlighting**: The `highlightSearchTerms` function uses a `Range` fragment to avoid breaking HTML structure. Be careful when modifying the regex used for highlighting.
+6. **Date Dot Heat Map**: This feature relies on `dateRange.min/max` calculated across all rows. Ensure new data processing steps don't break this calculation.
+7. **Viewed Status & LocalStorage**: 
+    - The `VIEWED_STORAGE_KEY` is unique to the `SPREADSHEET_ID`. 
+    - **Marking as Viewed**: Controlled by `CONFIG.VIEWED_DELAY` (in seconds). If set to 0, it marks as viewed immediately. Otherwise, it waits for the specified duration before updating local storage and badges.
+8. **Lazy Loading Logic**: Must remain click-based. Do not re-introduce hover-based loading to prevent performance issues when mousing over many rows quickly.
+
+## Testing Checklist for New Features
+- [ ] Does it work with multiple accordion instances on the same page?
+- [ ] Does it work with both `show` and `hide` initial states?
+- [ ] Are the YouTube and Image regex functions still separate and functional?
+- [ ] Does it respect the CSS injection order (CSS Sandwich)?
+- [ ] Is it pure Vanilla JS?
+- [ ] Does it handle Google Sheets Rich Text formatting correctly?
+- [ ] Is lazy loading still click-only (no hover triggers)?
+- [ ] Does the Viewed Status correctly respect `CONFIG.VIEWED_DELAY`?
