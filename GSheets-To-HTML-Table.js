@@ -2166,10 +2166,30 @@
                         if (directImageUrl && mappedUrls.length > 0) {
                             // Cell has image URLs AND link URLs
                             // Since this is the small thumbnail cell, ONLY show the first image
+                            // Updated handling that respects CONFIG.IMAGE_THUMB_CLICK_MODE
+                            // `i` is the index of the current column within `questionColumnIndices`
+
                             let firstUrl = directImageUrl[0];
-                            let popupEnabled = true; // Always enable popup
+
+                            // Determine thumbnail click behavior based on configuration
+                            const isOverlayMode = CONFIG.IMAGE_THUMB_CLICK_MODE === 'overlay';
+                            const isUrlMode = CONFIG.IMAGE_THUMB_CLICK_MODE === 'url';
+
+                            // Left‑most column contains the small thumbnail
+                            let isLeftmostImageColumn = (i === 0);
+
+                            // In overlay mode the thumbnail should open the popup; in URL mode it should be a link (if a URL exists)
+                            let popupEnabled = isLeftmostImageColumn ? isOverlayMode : true;
+
+                            // Generate the <img> (or placeholder) tag with appropriate popup flag
                             let imgHtml = generateImageTag(firstUrl, true, popupEnabled, rowImagesContext);
-                            // Do not wrap in <a> tag here anymore, handle link in overlay
+
+                            // If we are in URL mode and have a mapped URL, wrap the thumbnail in a link.
+                            // When there is no mapped URL (empty string) we let the accordion toggle as usual.
+                            if (isLeftmostImageColumn && isUrlMode && mappedUrls.length > 0) {
+                                imgHtml = `<a href="${mappedUrls[0]}" target="_blank" rel="noopener noreferrer">${imgHtml}</a>`;
+                            }
+
                             linkedValue = (isHeaderRow ? "" : questionPrefix) + imgHtml;
                         } else if (directImageUrl) {
                             // Cell has image URLs but NO link URLs
