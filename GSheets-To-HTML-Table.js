@@ -51,14 +51,26 @@
         
         // Create HTML structure
         const searchBoxHTML = CONFIG.SHOW_SEARCH_BOX ? `
-            <input 
-                type="text" 
-                id="${INSTANCE_ID}-search" 
-                placeholder="${CONFIG.SEARCH_PLACEHOLDER}" 
-                class="accordion-search-input"
-                autocomplete="off"
-                data-scope="${CONFIG.SEARCH_SCOPE}"
-            >
+            <div class="accordion-search-container">
+                <input 
+                    type="text" 
+                    id="${INSTANCE_ID}-search" 
+                    placeholder="${CONFIG.SEARCH_PLACEHOLDER}" 
+                    class="accordion-search-input"
+                    autocomplete="off"
+                    data-scope="${CONFIG.SEARCH_SCOPE}"
+                >
+                <button id="${INSTANCE_ID}-share" class="accordion-share-btn" title="Share Search Result">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="18" cy="5" r="3"></circle>
+                        <circle cx="6" cy="12" r="3"></circle>
+                        <circle cx="18" cy="19" r="3"></circle>
+                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                    </svg>
+                </button>
+                <span id="${INSTANCE_ID}-share-message" class="accordion-share-message">Search URL Copied To Clipboard</span>
+            </div>
         ` : '';
         
         // Create common searches HTML if enabled and search box is shown
@@ -1353,6 +1365,7 @@
         // ============================================
         function initializeSearch() {
             const searchInput = document.getElementById(INSTANCE_ID + '-search');
+            const shareBtn = document.getElementById(INSTANCE_ID + '-share');
             
             if (searchInput) {
                 const searchScope = searchInput.dataset.scope;
@@ -1371,6 +1384,58 @@
                 // Animate placeholder on load
                 animatePlaceholderText(searchInput, CONFIG.SEARCH_PLACEHOLDER);
                 console.log('[Accordion] Search initialized with scope:', searchScope);
+
+                if (shareBtn) {
+                    shareBtn.addEventListener('click', () => {
+                        const searchText = searchInput.value.trim();
+                        const searchVarName = CONFIG.SEARCH_GET_VAR_NAME || 'search';
+                        
+                        let shareUrl;
+                        try {
+                            const url = new URL(window.location.href);
+                            if (searchText) {
+                                url.searchParams.set(searchVarName, searchText);
+                            } else {
+                                url.searchParams.delete(searchVarName);
+                            }
+                            shareUrl = url.toString();
+                        } catch (e) {
+                            // Fallback for older browsers or file:// URLs where URL API might behave differently
+                            const baseUrl = window.location.href.split('?')[0].split('#')[0];
+                            const params = new URLSearchParams(window.location.search);
+                            if (searchText) {
+                                params.set(searchVarName, searchText);
+                            } else {
+                                params.delete(searchVarName);
+                            }
+                            const queryString = params.toString();
+                            shareUrl = baseUrl + (queryString ? '?' + queryString : '');
+                        }
+
+                        navigator.clipboard.writeText(shareUrl).then(() => {
+                            const originalHtml = shareBtn.innerHTML;
+                            const shareMessage = document.getElementById(INSTANCE_ID + '-share-message');
+
+                            // Checkmark icon
+                            shareBtn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+                            shareBtn.classList.add('copied');
+                            
+                            if (shareMessage) {
+                                shareMessage.classList.add('show');
+                            }
+
+                            setTimeout(() => {
+                                shareBtn.innerHTML = originalHtml;
+                                shareBtn.classList.remove('copied');
+                                if (shareMessage) {
+                                    shareMessage.classList.remove('show');
+                                }
+                            }, 2000);
+                        }).catch(err => {
+                            console.error('Failed to copy: ', err);
+                        });
+                    });
+                }
             }
         }
         

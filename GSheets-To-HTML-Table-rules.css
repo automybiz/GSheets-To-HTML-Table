@@ -1,6 +1,14 @@
     /* ============================================
        ACCORDION SEARCH INPUT
        ============================================ */
+    .accordion-search-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: var(--search-margin-bottom);
+        flex-wrap: wrap;
+    }
+
     .accordion-search-input {
         color: var(--search-font-color) !important;
         background-color: var(--search-bg-color) !important;
@@ -9,8 +17,51 @@
         font-size: var(--search-font-size) !important;
         padding: var(--search-padding-vertical) var(--search-padding-horizontal) !important;
         width: var(--search-width) !important;
-        margin-bottom: var(--search-margin-bottom) !important;
+        margin-bottom: 0 !important; /* Managed by container now */
         outline: none;
+    }
+
+    .accordion-share-btn {
+        color: var(--search-font-color);
+        background-color: var(--search-bg-color);
+        border: 1px solid var(--search-border-color);
+        border-radius: var(--search-border-radius);
+        font-size: calc(var(--search-font-size) - 2px);
+        padding: 4px 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .accordion-share-btn:hover {
+        background-color: var(--question-hover-bg-color);
+        transform: translateY(-1px);
+    }
+
+    .accordion-share-btn:active {
+        transform: translateY(0);
+    }
+
+    .accordion-share-btn.copied {
+        color: #0F0;
+        border-color: #0F0;
+    }
+
+    .accordion-share-message {
+        font-size: 14px;
+        color: #0F0;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        margin-left: 5px;
+        pointer-events: none;
+        white-space: nowrap;
+    }
+
+    .accordion-share-message.show {
+        opacity: 1;
     }
     
     .accordion-search-input::placeholder {
