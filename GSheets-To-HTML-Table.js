@@ -60,6 +60,12 @@
                     autocomplete="off"
                     data-scope="${CONFIG.SEARCH_SCOPE}"
                 >
+                <button id="${INSTANCE_ID}-clear" class="accordion-clear-btn" title="Clear Search">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
                 <button id="${INSTANCE_ID}-share" class="accordion-share-btn" title="Share Search Result">
                     <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="18" cy="5" r="3"></circle>
@@ -1365,6 +1371,7 @@
         // ============================================
         function initializeSearch() {
             const searchInput = document.getElementById(INSTANCE_ID + '-search');
+            const clearBtn = document.getElementById(INSTANCE_ID + '-clear');
             const shareBtn = document.getElementById(INSTANCE_ID + '-share');
             
             if (searchInput) {
@@ -1384,6 +1391,18 @@
                 // Animate placeholder on load
                 animatePlaceholderText(searchInput, CONFIG.SEARCH_PLACEHOLDER);
                 console.log('[Accordion] Search initialized with scope:', searchScope);
+
+                if (clearBtn) {
+                    clearBtn.addEventListener('click', () => {
+                        searchInput.value = '';
+                        if (searchScope === 'all') {
+                            performGlobalSearch('');
+                        } else {
+                            performSearch('');
+                        }
+                        searchInput.focus();
+                    });
+                }
 
                 if (shareBtn) {
                     shareBtn.addEventListener('click', () => {
@@ -1413,11 +1432,8 @@
                         }
 
                         navigator.clipboard.writeText(shareUrl).then(() => {
-                            const originalHtml = shareBtn.innerHTML;
                             const shareMessage = document.getElementById(INSTANCE_ID + '-share-message');
 
-                            // Checkmark icon
-                            shareBtn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
                             shareBtn.classList.add('copied');
                             
                             if (shareMessage) {
@@ -1425,12 +1441,11 @@
                             }
 
                             setTimeout(() => {
-                                shareBtn.innerHTML = originalHtml;
                                 shareBtn.classList.remove('copied');
                                 if (shareMessage) {
                                     shareMessage.classList.remove('show');
                                 }
-                            }, 2000);
+                            }, 3333);
                         }).catch(err => {
                             console.error('Failed to copy: ', err);
                         });

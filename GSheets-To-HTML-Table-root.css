@@ -70,6 +70,8 @@
         --search-highlight-bg-color: transparent;
         --search-highlight-text-color: #0FF;
         --common-search-spacing: 5px;
+        --search-share-success-color: #0FF; /* Used when a user clicks the "Share Search" button to indicate success */ 
+        --search-share-success-border-color: #0FF;
         
         --text-no-background-size: 20px;
         --text-no-background-color: #FFF;

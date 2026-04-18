@@ -21,6 +21,7 @@
         outline: none;
     }
 
+    .accordion-clear-btn,
     .accordion-share-btn {
         color: var(--search-font-color);
         background-color: var(--search-bg-color);
@@ -36,23 +37,25 @@
         justify-content: center;
     }
 
+    .accordion-clear-btn:hover,
     .accordion-share-btn:hover {
         background-color: var(--question-hover-bg-color);
         transform: translateY(-1px);
     }
 
+    .accordion-clear-btn:active,
     .accordion-share-btn:active {
         transform: translateY(0);
     }
 
     .accordion-share-btn.copied {
-        color: #0F0;
-        border-color: #0F0;
+        color: var(--search-share-success-color);
+        border-color: var(--search-share-success-border-color);
     }
 
     .accordion-share-message {
-        font-size: 14px;
-        color: #0F0;
+        font-size: calc(var(--search-font-size) - 2px);
+        color: var(--search-share-success-color);
         opacity: 0;
         transition: opacity 0.3s ease;
         margin-left: 5px;
