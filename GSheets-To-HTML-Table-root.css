@@ -57,7 +57,7 @@
         --row-odd-bg-color: #022;
         
         /* Search Input Styling */
-        --search-font-color: #FFF;
+        --search-font-color: #0FF;
         --search-bg-color: #011;
         --search-border-color: #099;
         --search-border-radius: 8px;
@@ -72,6 +72,10 @@
         --common-search-spacing: 5px;
         --search-share-success-color: #0FF; /* Used when a user clicks the "Share Search" button to indicate success */ 
         --search-share-success-border-color: #0FF;
+
+        --search-warning-text-color: #F80;
+        --search-warning-bg-color: #300;
+        --search-warning-border-color: #F80;
         
         --text-no-background-size: 20px;
         --text-no-background-color: #FFF;

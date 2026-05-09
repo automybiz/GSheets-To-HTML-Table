@@ -48,6 +48,30 @@
         transform: translateY(0);
     }
 
+    /* Pulsating Warning State for Clear Search Button */
+    @keyframes pulsate-glow {
+        0% {
+            box-shadow: 0 0 5px var(--search-warning-border-color);
+            border-color: var(--search-warning-border-color);
+        }
+        50% {
+            box-shadow: 0 0 20px var(--search-warning-border-color);
+            border-color: var(--search-warning-text-color);
+            transform: scale(1.05);
+        }
+        100% {
+            box-shadow: 0 0 5px var(--search-warning-border-color);
+            border-color: var(--search-warning-border-color);
+        }
+    }
+
+    .accordion-search-input:not(:placeholder-shown) + .accordion-clear-btn {
+        color: var(--search-warning-text-color);
+        background-color: var(--search-warning-bg-color);
+        border-color: var(--search-warning-border-color);
+        animation: pulsate-glow 1.5s infinite ease-in-out;
+    }
+
     .accordion-share-btn.copied {
         color: var(--search-share-success-color);
         border-color: var(--search-share-success-border-color);
