@@ -1471,36 +1471,22 @@
         function performSearch(searchTerm) {
             const items = document.querySelectorAll('#' + INSTANCE_ID + '-content .accordion-item');
             const term = searchTerm.toLowerCase().trim();
-            let visibleCount = 0;
+            let dataVisibleCount = 0;
             let lastVisibleItem = null;
         
             items.forEach((item, index) => {
-                // Check if this item corresponds to the header row that should be kept visible
-                if (CONFIG.HEADER_ROW_NUMBER !== 0) { 
-                    // Calculate the actual row number in the spreadsheet
-                    let isHeaderRow = false;
-                    if (CONFIG.HEADER_ROW_NUMBER < CONFIG.STARTING_ROW) {
-                        isHeaderRow = (index === 0);
-                    } else {
-                        const actualRowNumber = CONFIG.STARTING_ROW + index;
-                        isHeaderRow = (actualRowNumber === CONFIG.HEADER_ROW_NUMBER);
-                    }
+                const isHeaderRow = item.classList.contains('header-row');
 
-                    if (isHeaderRow) {
-                        item.classList.remove('hidden');
-                        // Ensure the question row within the header is also not hidden by other styles
-                        const qRow = item.querySelector('.accordion-question-row');
-                        if (qRow) {
-                            qRow.classList.remove('hidden');
-                            qRow.style.display = ''; // Force reset display style
-                        }
-                        
-                        lastVisibleItem = item;
-                        visibleCount++;
-                        return;
+                if (isHeaderRow) {
+                    item.classList.remove('hidden');
+                    const qRow = item.querySelector('.accordion-question-row');
+                    if (qRow) {
+                        qRow.classList.remove('hidden');
+                        qRow.style.display = '';
                     }
+                    return;
                 }
-                
+
                 if (term === '') {
                     item.classList.remove('hidden');
                     // Remove highlights when search is cleared
@@ -1508,7 +1494,7 @@
                         el.outerHTML = el.textContent;
                     });
                     lastVisibleItem = item;
-                    visibleCount++;
+                    dataVisibleCount++;
                 } else {
                     const textContent = item.textContent.toLowerCase();
                     let shouldBeVisible = false;
@@ -1540,7 +1526,7 @@
                             }
                         });
                         lastVisibleItem = item;
-                        visibleCount++;
+                        dataVisibleCount++;
                     } else {
                         item.classList.add('hidden');
                     }
@@ -1552,7 +1538,49 @@
                 item.classList.remove('active');
             });
         
-            // Remove last-visible-item class from all items
+            // Handle "No Results" row and Header visibility
+            const existingMessage = document.querySelector('#' + INSTANCE_ID + '-content .no-results-tbody');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+
+            if (dataVisibleCount === 0 && term !== '') {
+                // Hide header rows when no results found
+                items.forEach(item => {
+                    if (item.classList.contains('header-row')) {
+                        item.classList.add('hidden');
+                    }
+                });
+
+                const table = document.querySelector('#' + INSTANCE_ID + '-content .accordion-table');
+                if (table) {
+                    const numColumns = wrapper.dataset.numColumns || 10;
+                    const tbody = document.createElement('tbody');
+                    tbody.className = 'accordion-item no-results-tbody last-visible-item';
+                    
+                    const tr = document.createElement('tr');
+                    // Mimic a normal question row for styling (rounded corners)
+                    tr.className = 'accordion-question-row no-answer no-results-row first-visible-row';
+                    
+                    const td = document.createElement('td');
+                    td.setAttribute('colspan', numColumns);
+                    td.className = 'no-results-message';
+                    td.innerHTML = `No results found for "<strong>${searchTerm}</strong>"`;
+                    
+                    tr.appendChild(td);
+                    tbody.appendChild(tr);
+                    table.appendChild(tbody);
+                }
+            } else {
+                // Show header rows if they exist and search has results (or is empty)
+                items.forEach(item => {
+                    if (item.classList.contains('header-row')) {
+                        item.classList.remove('hidden');
+                    }
+                });
+            }
+
+            // Remove last-visible-item class from all items (except possibly our new no-results-row)
             items.forEach(item => item.classList.remove('last-visible-item'));
             
             // Add last-visible-item class to the last visible item
@@ -1567,21 +1595,6 @@
             const expansionSetting = wrapper.dataset.expansionSetting;
             if (expansionSetting) {
                 applyExpansionSettings(expansionSetting, items);
-            }
-        
-            const existingMessage = document.querySelector('#' + INSTANCE_ID + '-content .no-results-message');
-            if (existingMessage) {
-                existingMessage.remove();
-            }
-        
-            if (visibleCount === 0 && term !== '') {
-                const container = document.querySelector('#' + INSTANCE_ID + '-content .accordion-container');
-                if (container) {
-                    const message = document.createElement('div');
-                    message.className = 'no-results-message';
-                    message.textContent = 'No results found for "' + searchTerm + '"';
-                    container.appendChild(message);
-                }
             }
         }
         
@@ -1686,22 +1699,51 @@
             });
         
             // Remove all existing "no results" messages
-            document.querySelectorAll('.no-results-message').forEach(msg => msg.remove());
+            document.querySelectorAll('.no-results-tbody').forEach(msg => msg.remove());
         
-            // Add "no results" message to each empty container
-            if (totalVisibleCount === 0 && term !== '') {
-                document.querySelectorAll('.accordion-container').forEach(container => {
-                    const visibleInContainer = Array.from(container.querySelectorAll('.accordion-item'))
-                        .filter(item => !item.classList.contains('hidden')).length;
-                    
-                    if (visibleInContainer === 0) {
-                        const message = document.createElement('div');
-                        message.className = 'no-results-message';
-                        message.textContent = 'No results found for "' + searchTerm + '"';
-                        container.appendChild(message);
+            // Manage Header visibility and "No Results" row for Global Search
+            document.querySelectorAll('.accordion-container').forEach(container => {
+                const allItemsInContainer = container.querySelectorAll('.accordion-item');
+                const dataVisibleInContainer = Array.from(allItemsInContainer)
+                    .filter(item => !item.classList.contains('hidden') && !item.classList.contains('header-row')).length;
+                
+                if (dataVisibleInContainer === 0 && term !== '') {
+                    // Hide headers in this container
+                    allItemsInContainer.forEach(item => {
+                        if (item.classList.contains('header-row')) {
+                            item.classList.add('hidden');
+                        }
+                    });
+
+                    // Add "No Results" row to this table
+                    const table = container.querySelector('.accordion-table');
+                    const wrapper = container.closest('.accordion-wrapper');
+                    if (table && wrapper) {
+                        const numColumns = wrapper.dataset.numColumns || 10;
+                        const tbody = document.createElement('tbody');
+                        tbody.className = 'accordion-item no-results-tbody last-visible-item';
+                        
+                        const tr = document.createElement('tr');
+                        tr.className = 'accordion-question-row no-answer no-results-row first-visible-row';
+                        
+                        const td = document.createElement('td');
+                        td.setAttribute('colspan', numColumns);
+                        td.className = 'no-results-message';
+                        td.innerHTML = `No results found for "<strong>${searchTerm}</strong>"`;
+                        
+                        tr.appendChild(td);
+                        tbody.appendChild(tr);
+                        table.appendChild(tbody);
                     }
-                });
-            }
+                } else {
+                    // Show headers in this container
+                    allItemsInContainer.forEach(item => {
+                        if (item.classList.contains('header-row')) {
+                            item.classList.remove('hidden');
+                        }
+                    });
+                }
+            });
             
             // Re-apply alternating row colors
             applyAlternatingRowColors();
@@ -2067,6 +2109,7 @@
             const urlColumnIndices = getUrlColumnIndices();
             const hasAutoNumbering = CONFIG.AUTO_NUMBER_COLUMN !== null;
             const numColumns = questionColumnIndices.length + (hasAutoNumbering ? 1 : 0);
+            wrapper.dataset.numColumns = numColumns;
 
             // Viewed Status Setup
             const viewedColumnIndex = CONFIG.VIEWED_COLUMN ? columnLetterToIndex(CONFIG.VIEWED_COLUMN) : -1;
@@ -2138,7 +2181,8 @@
                     // Extract all images in this row to serve as context for the pop-up slider
                     const rowImagesContext = extractRowImagesForPopup(row, questionColumnIndices, answerColumnIndex, urlColumnIndices);
                     
-                    html += `<tbody class="accordion-item" id="${INSTANCE_ID}-item-${index}" data-animation="${textAnimation}" data-duration="${fadeDuration}" data-transition-speed="${transitionSpeed}" data-transition-effect="${transitionEffect}">`;
+                    const headerClass = isHeaderRow ? ' header-row' : '';
+                    html += `<tbody class="accordion-item${headerClass}" id="${INSTANCE_ID}-item-${index}" data-animation="${textAnimation}" data-duration="${fadeDuration}" data-transition-speed="${transitionSpeed}" data-transition-effect="${transitionEffect}">`;
         
                     // Header rows are never expandable (no answers)
                     if (answer && !isHeaderRow) {
