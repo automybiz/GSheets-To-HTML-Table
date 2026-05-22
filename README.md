@@ -62,7 +62,8 @@ A lightweight, highly configurable JavaScript library that transforms Google She
 
 ## 📁 Project Structure
 
-- `Cache-Busting-Loader.js`: The "smart" entry point. It manages versioning and dynamically builds the "CSS Sandwich" around your overrides.
+- `Cache-Busting-Loader.js`: The "smart" entry point. It manages versioning, pulls in dependencies like the Image Zoom script, and dynamically builds the "CSS Sandwich" around your overrides.
+- `Global-Image-Zoom.js`: Standalone script for the popup image overlay and zoom functionality.
 - `GSheets-To-HTML-Table.js`: Core logic for fetching and rendering data.
 - `GSheets-To-HTML-Table-root.css`: Global variables and base styling.
 - `GSheets-To-HTML-Table-rules.css`: Layout and component-specific styling.

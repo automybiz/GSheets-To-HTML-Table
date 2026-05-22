@@ -441,13 +441,23 @@
         // Detect Gallery
         let imagesToGallery = [];
         if (ENABLE_GALLERY_MODE) {
+            // Determine which classes from TARGET_IMAGE_CLASSES the clicked image has
+            const clickedImgTargetClasses = TARGET_IMAGE_CLASSES.filter(cls => img.classList.contains(cls));
+
             const allImgs = document.querySelectorAll('img');
             allImgs.forEach(item => {
-                // Same eligibility check
+                // Determine eligibility for this item
                 let itemEligible = true;
                 if (TARGET_IMAGE_CLASSES.length > 0) {
-                    itemEligible = TARGET_IMAGE_CLASSES.some(cls => item.classList.contains(cls));
+                    if (clickedImgTargetClasses.length > 0) {
+                        // Clicked image had specific target classes, so item must share at least one to be in the same gallery
+                        itemEligible = clickedImgTargetClasses.some(cls => item.classList.contains(cls));
+                    } else {
+                        // Fallback: if TARGET_IMAGE_CLASSES is set but clicked img has none (should not happen due to earlier check)
+                        itemEligible = TARGET_IMAGE_CLASSES.some(cls => item.classList.contains(cls));
+                    }
                 }
+
                 // Skip if hidden or part of excluded systems
                 const isHidden = item.offsetParent === null;
                 const isExcluded = item.closest('.accordion-wrapper') || item.closest('.image-overlay') || item.closest('.global-image-overlay');

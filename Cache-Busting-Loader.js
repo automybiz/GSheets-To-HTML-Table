@@ -31,7 +31,13 @@ const LATEST_VERSION = '{{VERSION}}';
     rulesCSS.rel = 'stylesheet';
     rulesCSS.href = baseUrl + 'GSheets-To-HTML-Table-rules.css' + versionSuffix;
 
-    // 3. Main JS Logic
+    // 3. Global Image Zoom Logic
+    const zoomJS = document.createElement('script');
+    // We add default parameters to enable gallery mode
+    zoomJS.src = baseUrl + 'Global-Image-Zoom.js' + (versionSuffix ? versionSuffix + '&' : '?') + 'gallery_mode=enabled';
+    zoomJS.defer = true;
+
+    // 4. Main GSheets Table Logic
     const mainJS = document.createElement('script');
     mainJS.src = baseUrl + 'GSheets-To-HTML-Table.js' + versionSuffix;
     mainJS.defer = true;
@@ -55,14 +61,17 @@ const LATEST_VERSION = '{{VERSION}}';
 
     // Handle JS separately (Anchor to config for logical DOM order)
     if (configTag) {
-        // Guarantee: Config < Main JS
+        // Guarantee: Config < Zoom JS < Main JS
         configTag.insertAdjacentElement('afterend', mainJS);
-        console.log('[GSheets-To-HTML-Table] Main JS anchored after Config tag.');
+        configTag.insertAdjacentElement('afterend', zoomJS);
+        console.log('[GSheets-To-HTML-Table] Scripts anchored after Config tag.');
     } else if (overridesTag) {
         // Fallback to overrides tag for JS
         overridesTag.insertAdjacentElement('afterend', mainJS);
+        overridesTag.insertAdjacentElement('afterend', zoomJS);
     } else {
         // Final fallback for JS
+        document.head.appendChild(zoomJS);
         document.head.appendChild(mainJS);
     }
 })();
