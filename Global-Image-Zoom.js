@@ -224,6 +224,66 @@
         .global-image-overlay-thumb.active {
             border: var(--global-overlay-thumbnail-active-border);
         }
+
+        /* External Link Icon */
+        .global-image-overlay-link-icon {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            width: 55px;
+            height: 55px;
+            background-color: #007bff;
+            border-radius: 50%;
+            display: none; /* Shown when link exists */
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 20;
+            cursor: pointer;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .global-image-overlay-link-icon:hover {
+            transform: scale(1.1);
+            background-color: #0056b3;
+        }
+
+        .global-image-overlay-link-icon svg {
+            width: 28px;
+            height: 28px;
+        }
+
+        /* Link Text Under Image */
+        .global-image-overlay-link-text-container {
+            width: 100%;
+            display: none; /* Shown when link exists */
+            justify-content: center;
+            padding: 10px 0;
+            z-index: 10;
+        }
+
+        .global-image-overlay-link-text {
+            color: var(--global-overlay-zoom-text-color);
+            background: color-mix(in srgb, var(--global-overlay-zoom-text-bg-color), transparent calc(100% * (1 - var(--global-overlay-zoom-text-bg-opacity))));
+            padding: 8px 20px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 16px;
+            transition: background 0.2s ease, color 0.2s ease;
+            max-width: 80%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .global-image-overlay-link-text:hover {
+            background: var(--global-overlay-zoom-text-bg-color);
+            color: #0FF;
+            text-decoration: underline;
+        }
     `;
 
     const styleTag = document.createElement('style');
@@ -237,6 +297,8 @@
     let currentIndex = 0;
 
     const navIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" /></svg>`;
+    const externalLinkSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
+    const linkChainSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`;
 
     function createOverlay() {
         if (overlay) return;
@@ -260,6 +322,16 @@
                 <div id="global-img-wrapper" style="position: relative; display: inline-block; transition: transform 0.1s ease-out; transform-origin: center center;">
                     <img src="" class="global-image-overlay-img" id="global-main-img">
                 </div>
+
+                <!-- Floating Link Icon -->
+                <a href="" class="global-image-overlay-link-icon" id="global-link-icon" target="_blank">
+                    ${externalLinkSvg}
+                </a>
+            </div>
+
+            <!-- Link Text Underneath -->
+            <div class="global-image-overlay-link-text-container" id="global-link-text-container">
+                <a href="" class="global-image-overlay-link-text" id="global-link-text" target="_blank"></a>
             </div>
 
             <div class="global-image-overlay-thumbnails" id="global-overlay-thumbnails"></div>
@@ -274,6 +346,9 @@
         const prevBtn = overlay.querySelector('#global-overlay-prev');
         const nextBtn = overlay.querySelector('#global-overlay-next');
         const thumbContainer = overlay.querySelector('#global-overlay-thumbnails');
+        const linkIcon = overlay.querySelector('#global-link-icon');
+        const linkText = overlay.querySelector('#global-link-text');
+        const linkTextContainer = overlay.querySelector('#global-link-text-container');
 
         function updateZoom() {
             imgWrapper.style.transform = `scale(${currentScale})`;
@@ -301,9 +376,30 @@
             if (index >= galleryImages.length) index = 0;
             currentIndex = index;
 
-            const imgSrc = galleryImages[currentIndex].src || galleryImages[currentIndex];
+            const currentData = galleryImages[currentIndex];
+            const imgSrc = currentData.src || currentData;
             mainImg.src = imgSrc;
             resetZoom();
+
+            // Update External Links
+            const link = currentData.link || '';
+            const target = currentData.target || '_blank';
+
+            if (link) {
+                linkIcon.href = link;
+                linkIcon.target = target;
+                linkIcon.style.display = 'flex';
+                linkIcon.innerHTML = target === '_blank' ? externalLinkSvg : linkChainSvg;
+                linkIcon.title = `Visit URL: ${link}`;
+
+                linkText.href = link;
+                linkText.target = target;
+                linkText.textContent = link;
+                linkTextContainer.style.display = 'flex';
+            } else {
+                linkIcon.style.display = 'none';
+                linkTextContainer.style.display = 'none';
+            }
 
             // Update thumbnails
             const thumbs = thumbContainer.querySelectorAll('.global-image-overlay-thumb');
@@ -333,6 +429,10 @@
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay || e.target === container) closeOverlay();
         });
+
+        // Prevent zoom/close when clicking link buttons
+        linkIcon.addEventListener('click', (e) => e.stopPropagation());
+        linkText.addEventListener('click', (e) => e.stopPropagation());
 
         prevBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -386,7 +486,11 @@
         }, { passive: false });
 
         overlay.open = function(clickedSrc, imagesArray) {
-            galleryImages = imagesArray || [clickedSrc];
+            // Ensure galleryImages is always an array of objects
+            galleryImages = (imagesArray || [clickedSrc]).map(item => {
+                if (typeof item === 'string') return { src: item, link: '', target: '_blank' };
+                return item;
+            });
             
             // Rebuild thumbnails
             thumbContainer.innerHTML = '';
@@ -463,11 +567,21 @@
                 const isExcluded = item.closest('.accordion-wrapper') || item.closest('.image-overlay') || item.closest('.global-image-overlay');
                 
                 if (itemEligible && !isHidden && !isExcluded) {
-                    imagesToGallery.push(item.src);
+                    const parentAnchor = item.closest('a');
+                    imagesToGallery.push({
+                        src: item.src,
+                        link: parentAnchor ? parentAnchor.href : '',
+                        target: parentAnchor ? parentAnchor.target : '_blank'
+                    });
                 }
             });
         } else {
-            imagesToGallery = [img.src];
+            const parentAnchor = img.closest('a');
+            imagesToGallery = [{
+                src: img.src,
+                link: parentAnchor ? parentAnchor.href : '',
+                target: parentAnchor ? parentAnchor.target : '_blank'
+            }];
         }
 
         if (!overlay) createOverlay();
