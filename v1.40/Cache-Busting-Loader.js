@@ -1,0 +1,77 @@
+// Updated by GitHub Actions
+const LATEST_VERSION = 'v1.40';
+
+(function() {
+    const storageKey = 'gsheets_table_version';
+    const lastVersion = localStorage.getItem(storageKey);
+    
+    // Check if we need to bust cache
+    const needsBust = LATEST_VERSION !== lastVersion;
+    const versionSuffix = (LATEST_VERSION !== 'v1.40' && LATEST_VERSION) ? '?v=' + LATEST_VERSION : '';
+    
+    if (needsBust && LATEST_VERSION !== 'v1.40') {
+        localStorage.setItem(storageKey, LATEST_VERSION);
+    }
+
+    // Anchor tags for precise injection
+    const configTag = document.getElementById('GSheets-To-HTML-Table-Config');
+    const overridesTag = document.getElementById('GSheets-To-HTML-Table-Overrides');
+
+    // Determine environment (Local vs Production)
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '' || window.location.protocol === 'file:';
+    const baseUrl = isLocal ? '' : 'https://automybiz.github.io/GSheets-To-HTML-Table/latest/';
+
+    // 1. Root CSS (Variables)
+    const rootCSS = document.createElement('link');
+    rootCSS.rel = 'stylesheet';
+    rootCSS.href = baseUrl + 'GSheets-To-HTML-Table-root.css' + versionSuffix;
+    
+    // 2. Rules CSS (Layout/Components)
+    const rulesCSS = document.createElement('link');
+    rulesCSS.rel = 'stylesheet';
+    rulesCSS.href = baseUrl + 'GSheets-To-HTML-Table-rules.css' + versionSuffix;
+
+    // 3. Global Image Zoom Logic
+    const zoomJS = document.createElement('script');
+    // We add default parameters to enable gallery mode
+    zoomJS.src = baseUrl + 'Global-Image-Zoom.js' + (versionSuffix ? versionSuffix + '&' : '?') + 'gallery_mode=enabled';
+    zoomJS.defer = true;
+
+    // 4. Main GSheets Table Logic
+    const mainJS = document.createElement('script');
+    mainJS.src = baseUrl + 'GSheets-To-HTML-Table.js' + versionSuffix;
+    mainJS.defer = true;
+
+    // ROGUE SANDWICH LOGIC 🥪
+    
+    // Handle CSS first (Sandwich your overrides)
+    if (overridesTag) {
+        // Guarantee: root.css < Overrides < rules.css
+        overridesTag.insertAdjacentElement('beforebegin', rootCSS);
+        overridesTag.insertAdjacentElement('afterend', rulesCSS);
+        console.log('[GSheets-To-HTML-Table] CSS Sandwich assembled! root.css -> Overrides -> rules.css');
+    } else if (configTag) {
+        // Fallback for CSS
+        configTag.insertAdjacentElement('afterend', rulesCSS);
+        configTag.insertAdjacentElement('afterend', rootCSS);
+    } else {
+        document.head.appendChild(rootCSS);
+        document.head.appendChild(rulesCSS);
+    }
+
+    // Handle JS separately (Anchor to config for logical DOM order)
+    if (configTag) {
+        // Guarantee: Config < Zoom JS < Main JS
+        configTag.insertAdjacentElement('afterend', mainJS);
+        configTag.insertAdjacentElement('afterend', zoomJS);
+        console.log('[GSheets-To-HTML-Table] Scripts anchored after Config tag.');
+    } else if (overridesTag) {
+        // Fallback to overrides tag for JS
+        overridesTag.insertAdjacentElement('afterend', mainJS);
+        overridesTag.insertAdjacentElement('afterend', zoomJS);
+    } else {
+        // Final fallback for JS
+        document.head.appendChild(zoomJS);
+        document.head.appendChild(mainJS);
+    }
+})();
