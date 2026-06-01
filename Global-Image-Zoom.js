@@ -15,10 +15,18 @@
     const TARGET_IMAGE_CLASSES = TARGET_CLASSES_PARAM ? TARGET_CLASSES_PARAM.split(',').map(c => c.trim()).filter(c => c !== '') : [];
     
     const ENABLE_MOBILE_PARAM = urlParams.get('mobile');
-    const ENABLE_POPUP_IMAGE_ZOOM_ON_MOBILE = ENABLE_MOBILE_PARAM === 'true'; // Default is false unless specified true
+    const ENABLE_POPUP_IMAGE_ZOOM_ON_MOBILE = ENABLE_MOBILE_PARAM === 'true' || ENABLE_MOBILE_PARAM === '1';
 
     const GALLERY_MODE_PARAM = urlParams.get('gallery_mode');
-    const ENABLE_GALLERY_MODE = GALLERY_MODE_PARAM !== 'disabled'; // Default is true unless specified disabled
+    const ENABLE_GALLERY_MODE = GALLERY_MODE_PARAM !== 'disabled' && GALLERY_MODE_PARAM !== 'false' && GALLERY_MODE_PARAM !== '0';
+
+    const MOUSE_FOLLOW_PARAM = urlParams.get('mouse_follow_zoom');
+    const ENABLE_MOUSE_FOLLOW_WHEN_ZOOMED = MOUSE_FOLLOW_PARAM !== 'false' && MOUSE_FOLLOW_PARAM !== '0';
+
+    const SINGLE_CLICK_ZOOM_PERCENTAGE = urlParams.get('single_click_zoom') || '200';
+    const DOUBLE_CLICK_ZOOM_PERCENTAGE = urlParams.get('double_click_zoom') || '500';
+    const SINGLE_CLICK_ZOOM_SCALE = parseFloat(SINGLE_CLICK_ZOOM_PERCENTAGE) / 100;
+    const DOUBLE_CLICK_ZOOM_SCALE = parseFloat(DOUBLE_CLICK_ZOOM_PERCENTAGE) / 100;
 
     // 2. Mobile Detection & Exit
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.innerWidth <= 768);
@@ -88,6 +96,8 @@
             transition: opacity 0.3s ease;
             visibility: hidden;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         .global-image-overlay.active {
@@ -139,18 +149,30 @@
             flex: 1;
         }
 
-        .global-image-overlay-img {
-            max-width: 90%;
-            max-height: 90%;
-            object-fit: contain;
-            transition: transform 0.1s ease-out, box-shadow 0.3s ease;
-            transform-origin: center center;
-            cursor: zoom-in;
+        .global-image-overlay-img-wrapper {
+            position: relative;
+            display: inline-block;
+            max-width: 100%;
+            max-height: 100%;
+            overflow: hidden;
+            transition: box-shadow 0.3s ease, width 0.1s ease-out, height 0.1s ease-out;
             box-shadow: 0 0 var(--global-overlay-image-glow-size) color-mix(in srgb, var(--global-overlay-image-glow-color), transparent calc(100% * (1 - var(--global-overlay-image-glow-opacity))));
+            line-height: 0;
+            cursor: zoom-in;
         }
 
-        .global-image-overlay-img:hover {
-            box-shadow: 0 0 var(--global-overlay-image-glow-hover-size) color-mix(in srgb, var(--global-overlay-image-glow-hover-color), transparent calc(100% * (1 - var(--global-overlay-image-glow-hover-opacity))));
+        .global-image-overlay-img-wrapper:hover {
+            box-shadow: 0 0 var(--global-overlay-image-glow-hover-size) color-mix(in srgb, var(--global-overlay-image-glow-hover-color), transparent calc(100% * (1 - var(--global-overlay-image-glow-opacity))));
+        }
+
+        .global-image-overlay-img {
+            max-width: 90%; /* Constraint for measurement */
+            max-height: 90%;
+            object-fit: contain;
+            transition: width 0.1s ease-out, height 0.1s ease-out, transform 0.1s ease-out, opacity 0.3s ease;
+            transform-origin: center center;
+            display: block;
+            margin: 0; /* Position managed via translate */
         }
 
         /* Navigation Buttons */
@@ -319,7 +341,7 @@
             </div>
 
             <div class="global-image-overlay-img-container" id="global-img-container">
-                <div id="global-img-wrapper" style="position: relative; display: inline-block; transition: transform 0.1s ease-out; transform-origin: center center;">
+                <div id="global-img-wrapper" class="global-image-overlay-img-wrapper">
                     <img src="" class="global-image-overlay-img" id="global-main-img">
                 </div>
 
@@ -350,17 +372,99 @@
         const linkText = overlay.querySelector('#global-link-text');
         const linkTextContainer = overlay.querySelector('#global-link-text-container');
 
+        let clickTimer = null;
+        let lastXPercent = 0.5;
+        let lastYPercent = 0.5;
+
+        function measureFitSize() {
+            if (!mainImg.src || mainImg.src.includes('data:image/gif') || mainImg.src === window.location.href) return;
+            
+            // Temporarily reset to measure natural "fit" size (90% constraint)
+            mainImg.style.width = '';
+            mainImg.style.height = '';
+            mainImg.style.maxWidth = '90%';
+            mainImg.style.maxHeight = '90%';
+            imgWrapper.style.width = '';
+            imgWrapper.style.height = '';
+            
+            void mainImg.offsetWidth; // Force reflow
+            
+            const rect = mainImg.getBoundingClientRect();
+            if (rect.width > 0) {
+                mainImg.dataset.fitWidth = rect.width;
+                mainImg.dataset.fitHeight = rect.height;
+                
+                mainImg.style.width = rect.width + 'px';
+                mainImg.style.height = rect.height + 'px';
+                mainImg.style.maxWidth = 'none';
+                mainImg.style.maxHeight = 'none';
+            }
+        }
+
+        mainImg.onload = () => {
+            measureFitSize();
+            mainImg.style.opacity = '1';
+            resetZoom();
+        };
+
+        function updatePan(e) {
+            if (e) {
+                const rect = imgWrapper.getBoundingClientRect();
+                lastXPercent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                lastYPercent = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+            }
+
+            const fitWidth = parseFloat(mainImg.dataset.fitWidth) || 0;
+            const fitHeight = parseFloat(mainImg.dataset.fitHeight) || 0;
+            const targetWidth = fitWidth * currentScale;
+            const targetHeight = fitHeight * currentScale;
+
+            const containerRect = container.getBoundingClientRect();
+            const currentWrapperW = Math.min(targetWidth, containerRect.width);
+            const currentWrapperH = Math.min(targetHeight, containerRect.height);
+
+            const panX = (currentWrapperW - targetWidth) * lastXPercent;
+            const panY = (currentWrapperH - targetHeight) * lastYPercent;
+
+            mainImg.style.transform = `translate(${panX}px, ${panY}px)`;
+        }
+
         function updateZoom() {
-            imgWrapper.style.transform = `scale(${currentScale})`;
+            const fitWidth = parseFloat(mainImg.dataset.fitWidth) || 0;
+            const fitHeight = parseFloat(mainImg.dataset.fitHeight) || 0;
+
+            if (fitWidth > 0 && fitHeight > 0) {
+                const targetWidth = fitWidth * currentScale;
+                const targetHeight = fitHeight * currentScale;
+                imgWrapper.style.width = targetWidth + 'px';
+                imgWrapper.style.height = targetHeight + 'px';
+                mainImg.style.width = targetWidth + 'px';
+                mainImg.style.height = targetHeight + 'px';
+                
+                // Remove constraints so image fills the wrapper exactly at any scale
+                mainImg.style.maxWidth = 'none';
+                mainImg.style.maxHeight = 'none';
+            }
+
             zoomText.textContent = `${Math.round(currentScale * 100)}%`;
             imgWrapper.style.cursor = currentScale > 1 ? 'zoom-out' : 'zoom-in';
         }
 
         function resetZoom() {
             currentScale = 1;
-            imgWrapper.style.transformOrigin = 'center center';
+            lastXPercent = 0.5;
+            lastYPercent = 0.5;
             updateZoom();
+            updatePan();
         }
+
+        window.addEventListener('resize', () => {
+            if (overlay && overlay.classList.contains('active')) {
+                measureFitSize();
+                updateZoom();
+                updatePan();
+            }
+        });
 
         function closeOverlay() {
             overlay.classList.remove('active');
@@ -378,8 +482,8 @@
 
             const currentData = galleryImages[currentIndex];
             const imgSrc = currentData.src || currentData;
+            mainImg.style.opacity = '0'; // Will fade in via onload
             mainImg.src = imgSrc;
-            resetZoom();
 
             // Update External Links
             const link = currentData.link || '';
@@ -453,37 +557,54 @@
             }
         });
 
+        imgWrapper.addEventListener('click', (e) => {
+            if (e.detail > 1) return; // Let dblclick handle it
+            
+            clickTimer = setTimeout(() => {
+                if (currentScale > 1) {
+                    resetZoom();
+                } else {
+                    currentScale = SINGLE_CLICK_ZOOM_SCALE;
+                    updateZoom();
+                    updatePan(e);
+                }
+                clickTimer = null;
+            }, 250);
+        });
+
         imgWrapper.addEventListener('dblclick', (e) => {
             e.preventDefault();
-            if (currentScale > 1) {
+            if (clickTimer) {
+                clearTimeout(clickTimer);
+                clickTimer = null;
+            }
+
+            // Clear any text selection caused by double click
+            if (window.getSelection) { window.getSelection().removeAllRanges(); }
+            
+            if (Math.abs(currentScale - DOUBLE_CLICK_ZOOM_SCALE) < 0.01) {
                 resetZoom();
             } else {
-                const rect = imgWrapper.getBoundingClientRect();
-                const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
-                const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
-                imgWrapper.style.transformOrigin = `${xPercent}% ${yPercent}%`;
-                currentScale = 2;
+                currentScale = DOUBLE_CLICK_ZOOM_SCALE;
                 updateZoom();
+                updatePan(e);
             }
         });
 
         overlay.addEventListener('wheel', (e) => {
             e.preventDefault();
-            const rect = imgWrapper.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-            const xPercent = (mouseX >= 0 && mouseX <= rect.width) ? (mouseX / rect.width) * 100 : 50;
-            const yPercent = (mouseY >= 0 && mouseY <= rect.height) ? (mouseY / rect.height) * 100 : 50;
-            imgWrapper.style.transformOrigin = `${xPercent}% ${yPercent}%`;
-
             const zoomStep = 0.2;
             if (e.deltaY < 0) currentScale = Math.min(5, currentScale + zoomStep);
-            else {
-                currentScale = Math.max(1, currentScale - zoomStep);
-                if (currentScale === 1) imgWrapper.style.transformOrigin = 'center center';
-            }
+            else currentScale = Math.max(1, currentScale - zoomStep);
+            
             updateZoom();
+            updatePan(e);
         }, { passive: false });
+
+        overlay.addEventListener('mousemove', (e) => {
+            if (!ENABLE_MOUSE_FOLLOW_WHEN_ZOOMED || currentScale <= 1) return;
+            updatePan(e);
+        });
 
         overlay.open = function(clickedSrc, imagesArray) {
             // Ensure galleryImages is always an array of objects
@@ -594,5 +715,5 @@
         overlay.open(src, galleryArray);
     };
 
-    console.log('[Global-Image-Zoom] Initialized. Mode:', ENABLE_GALLERY_MODE ? 'Gallery' : 'Single', 'Targets:', TARGET_IMAGE_CLASSES.length > 0 ? TARGET_IMAGE_CLASSES : 'All');
+    console.log('[Global-Image-Zoom] Initialized. Mode:', ENABLE_GALLERY_MODE ? 'Gallery' : 'Single', 'Targets:', TARGET_IMAGE_CLASSES.length > 0 ? TARGET_IMAGE_CLASSES : 'All', 'Mouse Follow:', ENABLE_MOUSE_FOLLOW_WHEN_ZOOMED);
 })();
