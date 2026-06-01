@@ -1,0 +1,719 @@
+(function() {
+    /**
+     * Global Image Zoom Overlay
+     * A standalone script to add popup zoom functionality to images.
+     * 
+     * Usage: <script src="Global-Image-Zoom.js?classes=hl-optimized&mobile=false&gallery_mode=enabled"></script>
+     */
+
+    // 1. Parse Script Parameters
+    const scriptTag = document.currentScript;
+    const scriptSrc = scriptTag ? scriptTag.src : '';
+    const urlParams = new URLSearchParams(scriptSrc.split('?')[1] || '');
+    
+    const TARGET_CLASSES_PARAM = urlParams.get('classes') || '';
+    const TARGET_IMAGE_CLASSES = TARGET_CLASSES_PARAM ? TARGET_CLASSES_PARAM.split(',').map(c => c.trim()).filter(c => c !== '') : [];
+    
+    const ENABLE_MOBILE_PARAM = urlParams.get('mobile');
+    const ENABLE_POPUP_IMAGE_ZOOM_ON_MOBILE = ENABLE_MOBILE_PARAM === 'true' || ENABLE_MOBILE_PARAM === '1';
+
+    const GALLERY_MODE_PARAM = urlParams.get('gallery_mode');
+    const ENABLE_GALLERY_MODE = GALLERY_MODE_PARAM !== 'disabled' && GALLERY_MODE_PARAM !== 'false' && GALLERY_MODE_PARAM !== '0';
+
+    const MOUSE_FOLLOW_PARAM = urlParams.get('mouse_follow_zoom');
+    const ENABLE_MOUSE_FOLLOW_WHEN_ZOOMED = MOUSE_FOLLOW_PARAM !== 'false' && MOUSE_FOLLOW_PARAM !== '0';
+
+    const SINGLE_CLICK_ZOOM_PERCENTAGE = urlParams.get('single_click_zoom') || '200';
+    const DOUBLE_CLICK_ZOOM_PERCENTAGE = urlParams.get('double_click_zoom') || '500';
+    const SINGLE_CLICK_ZOOM_SCALE = parseFloat(SINGLE_CLICK_ZOOM_PERCENTAGE) / 100;
+    const DOUBLE_CLICK_ZOOM_SCALE = parseFloat(DOUBLE_CLICK_ZOOM_PERCENTAGE) / 100;
+
+    // 2. Mobile Detection & Exit
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.innerWidth <= 768);
+    if (isMobile && !ENABLE_POPUP_IMAGE_ZOOM_ON_MOBILE) {
+        console.log('[Global-Image-Zoom] Mobile device detected and feature is disabled via configuration.');
+        return;
+    }
+
+    // 3. Inject CSS Styles
+    const css = `
+        :root {
+            --global-overlay-bg-color: #000;
+            --global-overlay-bg-opacity: 0.9;
+            --global-overlay-z-index: 999999;
+            --global-overlay-zoom-text-color: #FFF;
+            --global-overlay-zoom-text-bg-color: #000;
+            --global-overlay-zoom-text-bg-opacity: 0.5;
+            --global-overlay-zoom-text-font-size: 18px;
+            --global-overlay-image-glow-color: #0FF;
+            --global-overlay-image-glow-size: 11px;
+            --global-overlay-image-glow-opacity: 0.9;
+            --global-overlay-image-glow-hover-color: #0FF;
+            --global-overlay-image-glow-hover-size: 33px;
+            --global-overlay-image-glow-hover-opacity: 0.9;
+            --global-overlay-nav-button-bg: #000;
+            --global-overlay-nav-button-bg-opacity: 0.5;
+            --global-overlay-nav-button-hover-bg: #000;
+            --global-overlay-nav-button-hover-bg-opacity: 0.8;
+            --global-overlay-nav-button-color: #FFF;
+            --global-overlay-nav-button-size: 80px;
+            --global-overlay-thumbnail-size: 80px;
+            --global-overlay-thumbnail-border: 2px solid #088;
+            --global-overlay-thumbnail-active-border: 2px solid #0FF;
+            --global-overlay-thumbnail-strip-bg: #000;
+            --global-overlay-thumbnail-strip-bg-opacity: 0.7;
+        }
+
+        /* Target Image Hover Effects */
+        ${TARGET_IMAGE_CLASSES.length > 0 
+            ? TARGET_IMAGE_CLASSES.map(cls => `img.${cls}`).join(', ') 
+            : 'img:not(.global-image-overlay-img):not(.global-image-overlay-thumb)'} {
+            cursor: zoom-in !important;
+            transition: filter 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        ${TARGET_IMAGE_CLASSES.length > 0 
+            ? TARGET_IMAGE_CLASSES.map(cls => `img.${cls}:hover`).join(', ') 
+            : 'img:not(.global-image-overlay-img):not(.global-image-overlay-thumb):hover'} {
+            filter: brightness(1.05);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+        }
+
+        /* Overlay Styles */
+        .global-image-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: color-mix(in srgb, var(--global-overlay-bg-color), transparent calc(100% * (1 - var(--global-overlay-bg-opacity))));
+            z-index: var(--global-overlay-z-index);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            visibility: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .global-image-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .global-image-overlay-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: var(--global-overlay-zoom-text-color);
+            font-size: 30px;
+            cursor: pointer;
+            z-index: 10;
+            background: color-mix(in srgb, var(--global-overlay-zoom-text-bg-color), transparent calc(100% * (1 - var(--global-overlay-zoom-text-bg-opacity))));
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            user-select: none;
+        }
+
+        .global-image-overlay-zoom-text {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--global-overlay-zoom-text-color);
+            background: color-mix(in srgb, var(--global-overlay-zoom-text-bg-color), transparent calc(100% * (1 - var(--global-overlay-zoom-text-bg-opacity))));
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: var(--global-overlay-zoom-text-font-size);
+            z-index: 10;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .global-image-overlay-img-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            flex: 1;
+        }
+
+        .global-image-overlay-img-wrapper {
+            position: relative;
+            display: inline-block;
+            max-width: 100%;
+            max-height: 100%;
+            overflow: hidden;
+            transition: box-shadow 0.3s ease, width 0.1s ease-out, height 0.1s ease-out;
+            box-shadow: 0 0 var(--global-overlay-image-glow-size) color-mix(in srgb, var(--global-overlay-image-glow-color), transparent calc(100% * (1 - var(--global-overlay-image-glow-opacity))));
+            line-height: 0;
+            cursor: zoom-in;
+        }
+
+        .global-image-overlay-img-wrapper:hover {
+            box-shadow: 0 0 var(--global-overlay-image-glow-hover-size) color-mix(in srgb, var(--global-overlay-image-glow-hover-color), transparent calc(100% * (1 - var(--global-overlay-image-glow-opacity))));
+        }
+
+        .global-image-overlay-img {
+            max-width: 90%; /* Constraint for measurement */
+            max-height: 90%;
+            object-fit: contain;
+            transition: width 0.1s ease-out, height 0.1s ease-out, transform 0.1s ease-out, opacity 0.3s ease;
+            transform-origin: center center;
+            display: block;
+            margin: 0; /* Position managed via translate */
+        }
+
+        /* Navigation Buttons */
+        .global-image-overlay-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: var(--global-overlay-nav-button-size);
+            height: var(--global-overlay-nav-button-size);
+            background: color-mix(in srgb, var(--global-overlay-nav-button-bg), transparent calc(100% * (1 - var(--global-overlay-nav-button-bg-opacity))));
+            color: var(--global-overlay-nav-button-color);
+            display: none; /* Shown in gallery mode */
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            border-radius: 50%;
+            z-index: 10;
+            transition: background 0.2s ease, transform 0.2s ease;
+            user-select: none;
+        }
+
+        .global-image-overlay-nav:hover {
+            background: color-mix(in srgb, var(--global-overlay-nav-button-hover-bg), transparent calc(100% * (1 - var(--global-overlay-nav-button-hover-bg-opacity))));
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .global-image-overlay-nav.prev {
+            left: 20px;
+        }
+
+        .global-image-overlay-nav.next {
+            right: 20px;
+        }
+
+        .global-image-overlay-nav svg {
+            width: 60%;
+            height: 60%;
+        }
+
+        /* Thumbnails Strip */
+        .global-image-overlay-thumbnails {
+            width: 100%;
+            height: auto;
+            min-height: calc(var(--global-overlay-thumbnail-size) + 20px);
+            background: color-mix(in srgb, var(--global-overlay-thumbnail-strip-bg), transparent calc(100% * (1 - var(--global-overlay-thumbnail-strip-bg-opacity))));
+            display: none; /* Shown in gallery mode */
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow-x: auto;
+            z-index: 10;
+        }
+
+        .global-image-overlay-thumb {
+            width: var(--global-overlay-thumbnail-size);
+            height: var(--global-overlay-thumbnail-size);
+            object-fit: cover;
+            cursor: pointer;
+            border: var(--global-overlay-thumbnail-border);
+            transition: transform 0.2s ease;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .global-image-overlay-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        .global-image-overlay-thumb.active {
+            border: var(--global-overlay-thumbnail-active-border);
+        }
+
+        /* External Link Icon */
+        .global-image-overlay-link-icon {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            width: 55px;
+            height: 55px;
+            background-color: #007bff;
+            border-radius: 50%;
+            display: none; /* Shown when link exists */
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 20;
+            cursor: pointer;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .global-image-overlay-link-icon:hover {
+            transform: scale(1.1);
+            background-color: #0056b3;
+        }
+
+        .global-image-overlay-link-icon svg {
+            width: 28px;
+            height: 28px;
+        }
+
+        /* Link Text Under Image */
+        .global-image-overlay-link-text-container {
+            width: 100%;
+            display: none; /* Shown when link exists */
+            justify-content: center;
+            padding: 10px 0;
+            z-index: 10;
+        }
+
+        .global-image-overlay-link-text {
+            color: var(--global-overlay-zoom-text-color);
+            background: color-mix(in srgb, var(--global-overlay-zoom-text-bg-color), transparent calc(100% * (1 - var(--global-overlay-zoom-text-bg-opacity))));
+            padding: 8px 20px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 16px;
+            transition: background 0.2s ease, color 0.2s ease;
+            max-width: 80%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .global-image-overlay-link-text:hover {
+            background: var(--global-overlay-zoom-text-bg-color);
+            color: #0FF;
+            text-decoration: underline;
+        }
+    `;
+
+    const styleTag = document.createElement('style');
+    styleTag.textContent = css;
+    document.head.appendChild(styleTag);
+
+    // 4. Overlay Logic
+    let overlay = null;
+    let currentScale = 1;
+    let galleryImages = [];
+    let currentIndex = 0;
+
+    const navIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" /></svg>`;
+    const externalLinkSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
+    const linkChainSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`;
+
+    function createOverlay() {
+        if (overlay) return;
+
+        overlay = document.createElement('div');
+        overlay.id = 'global-image-zoom-overlay';
+        overlay.className = 'global-image-overlay';
+        
+        overlay.innerHTML = `
+            <div class="global-image-overlay-zoom-text" id="global-zoom-text">100%</div>
+            <div class="global-image-overlay-close">&times;</div>
+            
+            <div class="global-image-overlay-nav prev" id="global-overlay-prev" style="transform: translateY(-50%) rotate(180deg);">
+                ${navIconSvg}
+            </div>
+            <div class="global-image-overlay-nav next" id="global-overlay-next">
+                ${navIconSvg}
+            </div>
+
+            <div class="global-image-overlay-img-container" id="global-img-container">
+                <div id="global-img-wrapper" class="global-image-overlay-img-wrapper">
+                    <img src="" class="global-image-overlay-img" id="global-main-img">
+                </div>
+
+                <!-- Floating Link Icon -->
+                <a href="" class="global-image-overlay-link-icon" id="global-link-icon" target="_blank">
+                    ${externalLinkSvg}
+                </a>
+            </div>
+
+            <!-- Link Text Underneath -->
+            <div class="global-image-overlay-link-text-container" id="global-link-text-container">
+                <a href="" class="global-image-overlay-link-text" id="global-link-text" target="_blank"></a>
+            </div>
+
+            <div class="global-image-overlay-thumbnails" id="global-overlay-thumbnails"></div>
+        `;
+        document.body.appendChild(overlay);
+
+        const mainImg = overlay.querySelector('#global-main-img');
+        const imgWrapper = overlay.querySelector('#global-img-wrapper');
+        const zoomText = overlay.querySelector('#global-zoom-text');
+        const closeBtn = overlay.querySelector('.global-image-overlay-close');
+        const container = overlay.querySelector('#global-img-container');
+        const prevBtn = overlay.querySelector('#global-overlay-prev');
+        const nextBtn = overlay.querySelector('#global-overlay-next');
+        const thumbContainer = overlay.querySelector('#global-overlay-thumbnails');
+        const linkIcon = overlay.querySelector('#global-link-icon');
+        const linkText = overlay.querySelector('#global-link-text');
+        const linkTextContainer = overlay.querySelector('#global-link-text-container');
+
+        let clickTimer = null;
+        let lastXPercent = 0.5;
+        let lastYPercent = 0.5;
+
+        function measureFitSize() {
+            if (!mainImg.src || mainImg.src.includes('data:image/gif') || mainImg.src === window.location.href) return;
+            
+            // Temporarily reset to measure natural "fit" size (90% constraint)
+            mainImg.style.width = '';
+            mainImg.style.height = '';
+            mainImg.style.maxWidth = '90%';
+            mainImg.style.maxHeight = '90%';
+            imgWrapper.style.width = '';
+            imgWrapper.style.height = '';
+            
+            void mainImg.offsetWidth; // Force reflow
+            
+            const rect = mainImg.getBoundingClientRect();
+            if (rect.width > 0) {
+                mainImg.dataset.fitWidth = rect.width;
+                mainImg.dataset.fitHeight = rect.height;
+                
+                mainImg.style.width = rect.width + 'px';
+                mainImg.style.height = rect.height + 'px';
+                mainImg.style.maxWidth = 'none';
+                mainImg.style.maxHeight = 'none';
+            }
+        }
+
+        mainImg.onload = () => {
+            measureFitSize();
+            mainImg.style.opacity = '1';
+            resetZoom();
+        };
+
+        function updatePan(e) {
+            if (e) {
+                const rect = imgWrapper.getBoundingClientRect();
+                lastXPercent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                lastYPercent = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+            }
+
+            const fitWidth = parseFloat(mainImg.dataset.fitWidth) || 0;
+            const fitHeight = parseFloat(mainImg.dataset.fitHeight) || 0;
+            const targetWidth = fitWidth * currentScale;
+            const targetHeight = fitHeight * currentScale;
+
+            const containerRect = container.getBoundingClientRect();
+            const currentWrapperW = Math.min(targetWidth, containerRect.width);
+            const currentWrapperH = Math.min(targetHeight, containerRect.height);
+
+            const panX = (currentWrapperW - targetWidth) * lastXPercent;
+            const panY = (currentWrapperH - targetHeight) * lastYPercent;
+
+            mainImg.style.transform = `translate(${panX}px, ${panY}px)`;
+        }
+
+        function updateZoom() {
+            const fitWidth = parseFloat(mainImg.dataset.fitWidth) || 0;
+            const fitHeight = parseFloat(mainImg.dataset.fitHeight) || 0;
+
+            if (fitWidth > 0 && fitHeight > 0) {
+                const targetWidth = fitWidth * currentScale;
+                const targetHeight = fitHeight * currentScale;
+                imgWrapper.style.width = targetWidth + 'px';
+                imgWrapper.style.height = targetHeight + 'px';
+                mainImg.style.width = targetWidth + 'px';
+                mainImg.style.height = targetHeight + 'px';
+                
+                // Remove constraints so image fills the wrapper exactly at any scale
+                mainImg.style.maxWidth = 'none';
+                mainImg.style.maxHeight = 'none';
+            }
+
+            zoomText.textContent = `${Math.round(currentScale * 100)}%`;
+            imgWrapper.style.cursor = currentScale > 1 ? 'zoom-out' : 'zoom-in';
+        }
+
+        function resetZoom() {
+            currentScale = 1;
+            lastXPercent = 0.5;
+            lastYPercent = 0.5;
+            updateZoom();
+            updatePan();
+        }
+
+        window.addEventListener('resize', () => {
+            if (overlay && overlay.classList.contains('active')) {
+                measureFitSize();
+                updateZoom();
+                updatePan();
+            }
+        });
+
+        function closeOverlay() {
+            overlay.classList.remove('active');
+            setTimeout(() => {
+                if (!overlay.classList.contains('active')) {
+                    mainImg.src = ''; 
+                }
+            }, 300);
+        }
+
+        function showImage(index) {
+            if (index < 0) index = galleryImages.length - 1;
+            if (index >= galleryImages.length) index = 0;
+            currentIndex = index;
+
+            const currentData = galleryImages[currentIndex];
+            const imgSrc = currentData.src || currentData;
+            mainImg.style.opacity = '0'; // Will fade in via onload
+            mainImg.src = imgSrc;
+
+            // Update External Links
+            const link = currentData.link || '';
+            const target = currentData.target || '_blank';
+
+            if (link) {
+                linkIcon.href = link;
+                linkIcon.target = target;
+                linkIcon.style.display = 'flex';
+                linkIcon.innerHTML = target === '_blank' ? externalLinkSvg : linkChainSvg;
+                linkIcon.title = `Visit URL: ${link}`;
+
+                linkText.href = link;
+                linkText.target = target;
+                linkText.textContent = link;
+                linkTextContainer.style.display = 'flex';
+            } else {
+                linkIcon.style.display = 'none';
+                linkTextContainer.style.display = 'none';
+            }
+
+            // Update thumbnails
+            const thumbs = thumbContainer.querySelectorAll('.global-image-overlay-thumb');
+            thumbs.forEach((t, i) => {
+                if (i === currentIndex) {
+                    t.classList.add('active');
+                    t.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                } else {
+                    t.classList.remove('active');
+                }
+            });
+
+            // Update nav visibility
+            if (galleryImages.length > 1 && ENABLE_GALLERY_MODE) {
+                prevBtn.style.display = 'flex';
+                nextBtn.style.display = 'flex';
+                thumbContainer.style.display = 'flex';
+            } else {
+                prevBtn.style.display = 'none';
+                nextBtn.style.display = 'none';
+                thumbContainer.style.display = 'none';
+            }
+        }
+
+        // Event Listeners
+        closeBtn.addEventListener('click', closeOverlay);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay || e.target === container) closeOverlay();
+        });
+
+        // Prevent zoom/close when clicking link buttons
+        linkIcon.addEventListener('click', (e) => e.stopPropagation());
+        linkText.addEventListener('click', (e) => e.stopPropagation());
+
+        prevBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showImage(currentIndex - 1);
+        });
+
+        nextBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showImage(currentIndex + 1);
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (!overlay.classList.contains('active')) return;
+            if (e.key === 'Escape') closeOverlay();
+            if (ENABLE_GALLERY_MODE) {
+                if (e.key === 'ArrowLeft') showImage(currentIndex - 1);
+                if (e.key === 'ArrowRight') showImage(currentIndex + 1);
+            }
+        });
+
+        imgWrapper.addEventListener('click', (e) => {
+            if (e.detail > 1) return; // Let dblclick handle it
+            
+            clickTimer = setTimeout(() => {
+                if (currentScale > 1) {
+                    resetZoom();
+                } else {
+                    currentScale = SINGLE_CLICK_ZOOM_SCALE;
+                    updateZoom();
+                    updatePan(e);
+                }
+                clickTimer = null;
+            }, 250);
+        });
+
+        imgWrapper.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            if (clickTimer) {
+                clearTimeout(clickTimer);
+                clickTimer = null;
+            }
+
+            // Clear any text selection caused by double click
+            if (window.getSelection) { window.getSelection().removeAllRanges(); }
+            
+            if (Math.abs(currentScale - DOUBLE_CLICK_ZOOM_SCALE) < 0.01) {
+                resetZoom();
+            } else {
+                currentScale = DOUBLE_CLICK_ZOOM_SCALE;
+                updateZoom();
+                updatePan(e);
+            }
+        });
+
+        overlay.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomStep = 0.2;
+            if (e.deltaY < 0) currentScale = Math.min(5, currentScale + zoomStep);
+            else currentScale = Math.max(1, currentScale - zoomStep);
+            
+            updateZoom();
+            updatePan(e);
+        }, { passive: false });
+
+        overlay.addEventListener('mousemove', (e) => {
+            if (!ENABLE_MOUSE_FOLLOW_WHEN_ZOOMED || currentScale <= 1) return;
+            updatePan(e);
+        });
+
+        overlay.open = function(clickedSrc, imagesArray) {
+            // Ensure galleryImages is always an array of objects
+            galleryImages = (imagesArray || [clickedSrc]).map(item => {
+                if (typeof item === 'string') return { src: item, link: '', target: '_blank' };
+                return item;
+            });
+            
+            // Rebuild thumbnails
+            thumbContainer.innerHTML = '';
+            if (galleryImages.length > 1 && ENABLE_GALLERY_MODE) {
+                galleryImages.forEach((imgData, idx) => {
+                    const src = imgData.src || imgData;
+                    const thumb = document.createElement('img');
+                    thumb.src = src;
+                    thumb.className = 'global-image-overlay-thumb';
+                    thumb.onclick = (e) => {
+                        e.stopPropagation();
+                        showImage(idx);
+                    };
+                    thumbContainer.appendChild(thumb);
+                });
+            }
+
+            const startIdx = galleryImages.findIndex(img => (img.src || img) === clickedSrc);
+            showImage(startIdx === -1 ? 0 : startIdx);
+            overlay.classList.add('active');
+        };
+    }
+
+    // 5. Global Click Listener & Gallery Detection
+    document.body.addEventListener('click', function(e) {
+        const img = e.target.closest('img');
+        if (!img) return;
+
+        // Skip internal/accordion elements
+        if (img.closest('.image-overlay') || img.closest('.global-image-overlay') || img.closest('.accordion-wrapper')) return;
+
+        // Conflict Prevention with GSheets Table
+        if (img.dataset.popupEnabled === 'true' || 
+            img.getAttribute('onclick')?.includes('openGSheetsImageOverlay') ||
+            img.classList.contains('accordion-image-content') ||
+            img.classList.contains('accordion-answer-image') ||
+            img.classList.contains('image-overlay-thumb')) {
+            return;
+        }
+
+        // Class Targeting Check
+        let isEligible = true;
+        if (TARGET_IMAGE_CLASSES.length > 0) {
+            isEligible = TARGET_IMAGE_CLASSES.some(cls => img.classList.contains(cls));
+        }
+        if (!isEligible) return;
+
+        // Prevent default browser behavior
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Detect Gallery
+        let imagesToGallery = [];
+        if (ENABLE_GALLERY_MODE) {
+            // Determine which classes from TARGET_IMAGE_CLASSES the clicked image has
+            const clickedImgTargetClasses = TARGET_IMAGE_CLASSES.filter(cls => img.classList.contains(cls));
+
+            const allImgs = document.querySelectorAll('img');
+            allImgs.forEach(item => {
+                // Determine eligibility for this item
+                let itemEligible = true;
+                if (TARGET_IMAGE_CLASSES.length > 0) {
+                    if (clickedImgTargetClasses.length > 0) {
+                        // Clicked image had specific target classes, so item must share at least one to be in the same gallery
+                        itemEligible = clickedImgTargetClasses.some(cls => item.classList.contains(cls));
+                    } else {
+                        // Fallback: if TARGET_IMAGE_CLASSES is set but clicked img has none (should not happen due to earlier check)
+                        itemEligible = TARGET_IMAGE_CLASSES.some(cls => item.classList.contains(cls));
+                    }
+                }
+
+                // Skip if hidden or part of excluded systems
+                const isHidden = item.offsetParent === null;
+                const isExcluded = item.closest('.accordion-wrapper') || item.closest('.image-overlay') || item.closest('.global-image-overlay');
+                
+                if (itemEligible && !isHidden && !isExcluded) {
+                    const parentAnchor = item.closest('a');
+                    imagesToGallery.push({
+                        src: item.src,
+                        link: parentAnchor ? parentAnchor.href : '',
+                        target: parentAnchor ? parentAnchor.target : '_blank'
+                    });
+                }
+            });
+        } else {
+            const parentAnchor = img.closest('a');
+            imagesToGallery = [{
+                src: img.src,
+                link: parentAnchor ? parentAnchor.href : '',
+                target: parentAnchor ? parentAnchor.target : '_blank'
+            }];
+        }
+
+        if (!overlay) createOverlay();
+        overlay.open(img.src, imagesToGallery);
+    }, true);
+
+    // 6. Public API for consolidation
+    window.openGlobalImageOverlay = function(src, galleryArray) {
+        if (!overlay) createOverlay();
+        overlay.open(src, galleryArray);
+    };
+
+    console.log('[Global-Image-Zoom] Initialized. Mode:', ENABLE_GALLERY_MODE ? 'Gallery' : 'Single', 'Targets:', TARGET_IMAGE_CLASSES.length > 0 ? TARGET_IMAGE_CLASSES : 'All', 'Mouse Follow:', ENABLE_MOUSE_FOLLOW_WHEN_ZOOMED);
+})();
